@@ -188,7 +188,6 @@ jobs:
         prerelease: false
         generate_release_notes: true
         body: |
-
           ## 🚀 Phiên bản mới
           
           ### Thay đổi
@@ -289,7 +288,6 @@ jobs:
           - File `version_client.json` trong `_internal/` để kiểm tra cập nhật
           - Thư mục `config/` chứa cấu hình
           - Thư mục `internal/` và `data/` để lưu trữ
-
           
           ### Thay đổi
           - Tự động build từ commit: ${{ github.sha }}
@@ -325,40 +323,6 @@ jobs:
           Sử dụng endpoint: `https://api.github.com/repos/${{ github.repository }}/releases/latest`
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # Job riêng để tự động tạo release khi push code (không cần tag)
-  auto-release:
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    
-    - name: Get next version
-      id: version
-      run: |
-        gh release create "v1.0.${{ github.run_number }}" `
-          --title "MyApp v1.0.${{ github.run_number }}" `
-          --notes "## MyApp Build ${{ github.run_number }}
-
-        **📦 Download:** MyApp-v1.0.${{ github.run_number }}.zip
-
-        **📁 Structure:**
-        - MyApp.exe (main app)
-        - internal/ (your modules)
-        - config/ (configuration)  
-        - data/ (app data)
-
-        **🔧 Build Info:**
-        - Commit: ${{ github.sha }}
-        - Build: ${{ github.run_number }}
-        - Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" `
-          --latest `
-          dist/MyApp-v1.0.${{ github.run_number }}.zip
-      env:
-        GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
 
   notify-update:
     runs-on: ubuntu-latest
