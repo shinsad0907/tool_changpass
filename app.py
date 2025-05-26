@@ -34,24 +34,250 @@ class MailToolApp(QMainWindow):
         # Create tabs
         self.tab_change_pass = QWidget()
         self.tab_change_mail = QWidget()
+        self.tab_forgot_pass = QWidget()
         
         self.tab_widget.addTab(self.tab_change_pass, "Đổi Pass")
         self.tab_widget.addTab(self.tab_change_mail, "Đổi Mail")
+        self.tab_widget.addTab(self.tab_forgot_pass, "Quên Pass")
         
         # Setup the Đăng Nhập tab
         self.setup_change_pass_tab()
         self.setup_change_mail_tab()
+        self.setup_forgot_pass_tab()
         
         # Set the login tab as active
         self.tab_widget.setCurrentWidget(self.tab_change_mail)
         self.tab_widget.setCurrentWidget(self.tab_change_pass)
+        self.tab_widget.setCurrentWidget(self.tab_forgot_pass)
 
         
         # Create footer
         self.create_footer(main_layout)
         
         # Worker thread
+
+
         self.worker_thread = None
+
+    def setup_forgot_pass_tab(self):
+    # Main layout for the tab
+        forgot_pass_layout = QVBoxLayout(self.tab_forgot_pass)
+        forgot_pass_layout.setContentsMargins(10, 10, 10, 10)
+        
+        # Email list tree widget
+        self.forgot_pass_tree_widget = QTreeWidget()
+        self.forgot_pass_tree_widget.setFrameStyle(QFrame.Box | QFrame.Plain)
+        self.forgot_pass_tree_widget.setAlternatingRowColors(True)
+        self.forgot_pass_tree_widget.setSelectionMode(QTreeWidget.ExtendedSelection)
+        
+        # Set headers for the tree widget
+        headers = ["###", "STT", "UID", "COOKIE", "MAIL", "PASSMAIL", "PROXY", "CODE", "STATUS"]
+        self.forgot_pass_tree_widget.setColumnCount(len(headers))
+        self.forgot_pass_tree_widget.setHeaderLabels(headers)
+        
+        # Adjust column widths
+        self.forgot_pass_tree_widget.header().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.forgot_pass_tree_widget.header().setSectionResizeMode(2, QHeaderView.Stretch)
+        
+        # Style the header
+        self.forgot_pass_tree_widget.setStyleSheet("""
+            QTreeWidget::item:selected { background-color: #107bd2; color: white; }
+            QTreeWidget::item { height: 25px; }
+            QHeaderView::section { background-color: #d9e1f2; padding: 4px; }
+        """)
+        
+        # Enable context menu
+        self.forgot_pass_tree_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.forgot_pass_tree_widget.customContextMenuRequested.connect(self.show_forgot_pass_context_menu)
+        
+        forgot_pass_layout.addWidget(self.forgot_pass_tree_widget)
+        
+        # Add "Đã chọn" label
+        self.forgot_pass_selection_label = QLabel("Đã chọn: 0")
+        self.forgot_pass_selection_label.setAlignment(Qt.AlignRight)
+        forgot_pass_layout.addWidget(self.forgot_pass_selection_label)
+        
+        # Create bottom section
+        bottom_layout = QHBoxLayout()
+        
+        # Info section
+        data_group = QGroupBox("INFO")
+        data_layout = QVBoxLayout(data_group)
+        
+        # Create info labels
+        self.forgot_pass_total_label = QLabel("0")
+        self.forgot_pass_proxy_label = QLabel("1")
+        self.forgot_pass_success_label = QLabel("0")
+        self.forgot_pass_fail_label = QLabel("0")
+        
+        data_items = [
+            ("Tổng Mail:", self.forgot_pass_total_label),
+            ("Tổng Proxy:", self.forgot_pass_proxy_label),
+            ("Thành công:", self.forgot_pass_success_label),
+            ("Thất bại:", self.forgot_pass_fail_label)
+        ]
+        
+        for label_text, value_label in data_items:
+            row_layout = QHBoxLayout()
+            label = QLabel(label_text)
+            row_layout.addWidget(label)
+            row_layout.addWidget(value_label)
+            row_layout.addStretch()
+            data_layout.addLayout(row_layout)
+        
+        bottom_layout.addWidget(data_group)
+        
+        # Settings section
+        settings_group = QGroupBox("CẤU HÌNH")
+        settings_layout = QVBoxLayout(settings_group)
+        
+        # Proxy configuration
+        proxy_layout = QHBoxLayout()
+        self.forgot_pass_proxy_check = QCheckBox("Dùng Proxy:")
+        self.forgot_pass_proxy_check.setChecked(True)
+        self.forgot_pass_proxy_combo = QComboBox()
+        self.forgot_pass_proxy_combo.addItems(["Tmproxy.com", "ProxyV6", "911S5", "ShopLike"])
+        proxy_layout.addWidget(self.forgot_pass_proxy_check)
+        proxy_layout.addWidget(self.forgot_pass_proxy_combo)
+        settings_layout.addLayout(proxy_layout)
+        
+        # Password configuration
+        pass_layout = QHBoxLayout()
+        pass_label = QLabel("Mật khẩu mới:")
+        self.forgot_pass_type_combo = QComboBox()
+        self.forgot_pass_type_combo.addItems(["Tự nhập", "Ngẫu nhiên"])
+        pass_layout.addWidget(pass_label)
+        pass_layout.addWidget(self.forgot_pass_type_combo)
+        settings_layout.addLayout(pass_layout)
+        
+        # Password input
+        self.forgot_pass_input = QLineEdit()
+        self.forgot_pass_input.setPlaceholderText("Nhập mật khẩu mới")
+        settings_layout.addWidget(self.forgot_pass_input)
+        
+        # Thread configuration
+        thread_layout = QHBoxLayout()
+        thread_label = QLabel("Số luồng:")
+        self.forgot_pass_thread_spin = QSpinBox()
+        self.forgot_pass_thread_spin.setValue(5)
+        self.forgot_pass_thread_spin.setRange(1, 20)
+        thread_layout.addWidget(thread_label)
+        thread_layout.addWidget(self.forgot_pass_thread_spin)
+        settings_layout.addLayout(thread_layout)
+        
+        bottom_layout.addWidget(settings_group)
+        
+        # Action buttons
+        action_layout = QVBoxLayout()
+        file_output_label = QLabel("File Output")
+        file_output_label.setAlignment(Qt.AlignCenter)
+        
+        self.forgot_pass_start_button = QPushButton("START")
+        self.forgot_pass_start_button.setStyleSheet("background-color: #90ee90; color: black; min-height: 25px;")
+        self.forgot_pass_start_button.clicked.connect(self.start_forgot_pass_processing)
+        
+        self.forgot_pass_stop_button = QPushButton("STOP")
+        self.forgot_pass_stop_button.setStyleSheet("background-color: #ff9999; color: black; min-height: 25px;")
+        self.forgot_pass_stop_button.clicked.connect(self.stop_forgot_pass_processing)
+        self.forgot_pass_stop_button.setEnabled(False)
+        
+        self.forgot_pass_export_button = QPushButton("Export File")
+        self.forgot_pass_export_button.setStyleSheet("background-color: #87ceeb; color: black; min-height: 25px;")
+        self.forgot_pass_export_button.clicked.connect(self.export_forgot_pass_data)
+        
+        action_layout.addWidget(file_output_label)
+        action_layout.addWidget(self.forgot_pass_start_button)
+        action_layout.addWidget(self.forgot_pass_stop_button)
+        action_layout.addWidget(self.forgot_pass_export_button)
+        action_layout.addStretch()
+        
+        bottom_layout.addLayout(action_layout)
+        forgot_pass_layout.addLayout(bottom_layout)
+
+    def show_forgot_pass_context_menu(self, position):
+        context_menu = QMenu()
+        
+        add_mail_action = QAction("Nhập Mail", self)
+        add_proxy_action = QAction("Nhập Proxy", self)
+        select_all_action = QAction("Chọn tất cả", self)
+        deselect_all_action = QAction("Bỏ chọn tất cả", self)
+        select_errors_action = QAction("Chọn bôi đen", self)
+        delete_mail_action = QAction("Xóa mail", self)
+        
+        context_menu.addAction(add_mail_action)
+        context_menu.addAction(add_proxy_action)
+        context_menu.addSeparator()
+        context_menu.addAction(select_all_action)
+        context_menu.addAction(deselect_all_action)
+        context_menu.addAction(select_errors_action)
+        context_menu.addSeparator()
+        context_menu.addAction(delete_mail_action)
+        
+        add_mail_action.triggered.connect(self.add_forgot_pass_mail)
+        add_proxy_action.triggered.connect(self.add_forgot_pass_proxy)
+        select_all_action.triggered.connect(self.select_all_forgot_pass)
+        deselect_all_action.triggered.connect(self.deselect_all_forgot_pass)
+        select_errors_action.triggered.connect(self.select_errors_forgot_pass)
+        delete_mail_action.triggered.connect(self.delete_forgot_pass_mail)
+        
+        context_menu.exec_(QCursor.pos())
+
+    def add_forgot_pass_mail(self):
+        copied_text = pyperclip.paste()
+        sample_data = []
+        
+        for account in copied_text.strip().split('\n'):
+            if '|' in account:
+                parts = account.split('|')
+                if len(parts) >= 2:
+                    uid = parts[0]
+                    email = parts[1]
+                    sample_data.append((uid, email))
+        
+        start_index = self.forgot_pass_tree_widget.topLevelItemCount()
+        for i, (uid, email) in enumerate(sample_data):
+            item = QTreeWidgetItem(self.forgot_pass_tree_widget)
+            checkbox = QCheckBox()
+            checkbox.setChecked(True)
+            self.forgot_pass_tree_widget.setItemWidget(item, 0, checkbox)
+            item.setText(1, str(start_index + i + 1))
+            item.setText(2, uid)
+            item.setText(3, "")
+            item.setText(4, email)
+            item.setText(5, "")
+            item.setText(6, "")
+            item.setText(7, "")
+            item.setText(8, "")
+        
+        self.update_forgot_pass_counts()
+
+    def start_forgot_pass_processing(self):
+        # Logic xử lý quên mật khẩu
+        pass
+
+    def stop_forgot_pass_processing(self):
+        # Logic dừng xử lý
+        pass
+
+    def export_forgot_pass_data(self):
+        # Logic xuất dữ liệu
+        pass
+
+
+
+
+
+
+
+
+
+
+# ===========================================================
+
+
+
+
+
     def setup_change_mail_tab(self):
         # Main layout for the tab
         change_mail_layout = QVBoxLayout(self.tab_change_mail)
