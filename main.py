@@ -18,8 +18,8 @@ class Main:
         print(self.account)
 
         options = webdriver.ChromeOptions()
-        mobile_emulation = {"deviceName": "iPhone X"}
-        options.add_experimental_option("mobileEmulation", mobile_emulation)
+        # mobile_emulation = {"deviceName": "iPhone X"}
+        # options.add_experimental_option("mobileEmulation", mobile_emulation)
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
@@ -45,14 +45,14 @@ class Main:
         y = row * WINDOW_HEIGHT
         self.driver.set_window_position(x, y)
 
-    def wait_and_click(self, xpath, timeout=120):
+    def wait_and_click(self, xpath, timeout=60):
         element = WebDriverWait(self.driver, timeout).until(
             EC.element_to_be_clickable((By.XPATH, xpath))
         )
         element.click()
         sleep(1.5)
 
-    def wait_and_send_keys(self, xpath, keys, timeout=120):
+    def wait_and_send_keys(self, xpath, keys, timeout=60):
         def human_typing(element, text, delay_range=(0.1, 0.3)):
             for char in text:
                 element.send_keys(char)
