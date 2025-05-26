@@ -45,14 +45,14 @@ class Main:
         y = row * WINDOW_HEIGHT
         self.driver.set_window_position(x, y)
 
-    def wait_and_click(self, xpath, timeout=60):
+    def wait_and_click(self, xpath, timeout=120):
         element = WebDriverWait(self.driver, timeout).until(
             EC.element_to_be_clickable((By.XPATH, xpath))
         )
         element.click()
         sleep(1.5)
 
-    def wait_and_send_keys(self, xpath, keys, timeout=60):
+    def wait_and_send_keys(self, xpath, keys, timeout=120):
         def human_typing(element, text, delay_range=(0.1, 0.3)):
             for char in text:
                 element.send_keys(char)
@@ -149,18 +149,21 @@ class Main:
         )
         self.driver.get("https://m.facebook.com/login/identify/")
         try:
+            self.driver.get(f"https://www.facebook.com/recover/password/?u={self.account['uid']}&n={self.account['code']}&fl=default_recover&sih=0&msgr=0")
             try:
                 self.wait_and_click("/html/body/div[1]/div/div[6]/div[1]/div/div[2]/div[2]/div[3]/button[2]")
             except:
                 pass
-            self.wait_and_click("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[2]/div/div/div[2]/div/div[2]/div/div/div/div/div/div")
-            self.wait_and_send_keys("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[2]/div/div/div[1]/div/div/div[2]/div[2]/input", self.account['email'])
-            self.wait_and_click("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[2]/div/div/div[2]/div/div[1]/div/div/div/div/div/div")
-            self.wait_and_send_keys("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[3]/div/div/div[1]/div/div/div[2]/div[2]/input", self.account['code'])
-            self.wait_and_click("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[3]/div/div/div[3]/div/div[1]/div/div/div/div/div/div")
-            self.wait_and_send_keys("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[2]/div/div/div/div/div[2]/div[2]/input", self.generated_pass)
-            self.wait_and_click("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[3]/div/div/div/div[1]/div/div/div/div/div/div")
-            sleep(10)
+            # self.wait_and_click("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[2]/div/div/div[2]/div/div[2]/div/div/div/div/div/div")
+            # self.wait_and_send_keys("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[2]/div/div/div[1]/div/div/div[2]/div[2]/input", self.account['email'])
+            # self.wait_and_click("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[2]/div/div/div[2]/div/div[1]/div/div/div/div/div/div")
+            # self.wait_and_send_keys("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[3]/div/div/div[1]/div/div/div[2]/div[2]/input", self.account['code'])
+            # self.wait_and_click("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[3]/div/div/div[3]/div/div[1]/div/div/div/div/div/div")
+            # self.wait_and_send_keys("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[2]/div/div/div/div/div[2]/div[2]/input", self.generated_pass)
+            # self.wait_and_click("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[3]/div/div/div/div[1]/div/div/div/div/div/div")
+            self.wait_and_send_keys("/html/body/div[1]/div[1]/div[2]/div[2]/div/div/form/div[1]/section[2]/div/div/div[1]/div/input", self.generated_pass)
+            self.wait_and_click("/html/body/div[1]/div[1]/div[2]/div[2]/div/div/form/div[2]/button")
+            sleep(20)
             cookies = self.get_cookies()
             self.driver.quit()
             return True, self.generated_pass, cookies
@@ -173,21 +176,54 @@ class Main:
         self.driver.get("https://www.facebook.com/")
         sleep(3)
         try:
-            self.driver.get(f"https://www.facebook.com/recover/password/?u={self.account['uid']}&n={self.account['code']}&fl=default_recover&sih=0&msgr=0")
             try:
                 self.wait_and_click("/html/body/div[1]/div/div[6]/div[1]/div/div[2]/div[2]/div[3]/button[2]")
             except:
                 pass
-            self.wait_and_send_keys("/html/body/div[1]/div[1]/div[2]/div[2]/div/div/form/div[1]/section[2]/div/div/div[1]/div/input", self.generated_pass)
-            self.wait_and_click("/html/body/div[1]/div[1]/div[2]/div[2]/div/div/form/div[2]/button")
-            sleep(20)
-            cookies = self.get_cookies()
-            self.driver.quit()
-            return True, self.generated_pass, cookies
+
+            self.add_cookie()
+            self.driver.get("https://accountscenter.facebook.com/personal_info/contact_points/?contact_point_type=email&dialog_type=add_contact_point")
+            sleep(2)
+            self.driver.get("https://accountscenter.facebook.com/personal_info/contact_points/?contact_point_type=email&dialog_type=add_contact_point")
+            # Nhập email mới
+            self.wait_and_send_keys(
+                "/html/body/div[1]/div/div/div/div[3]/div/div/div[2]/div/div/div/div/div/div/div/div[4]/div[2]/div[1]/div[2]/div/div/div/div/div[1]/input",
+                self.account['new_email'].split('|')[0]
+            )
+            sleep(1)
+            self.wait_and_click(
+                "/html/body/div[1]/div/div/div/div[3]/div/div/div[2]/div/div/div/div/div/div/div/div[4]/div[2]/div[1]/div[3]/div/div[2]/div/div/div/div/label/div[1]/div/div[3]/div/input"
+            )
+            sleep(1)
+            self.wait_and_click(
+                "/html/body/div[1]/div/div/div/div[3]/div/div/div[2]/div/div/div/div/div/div/div/div[5]/div/div/div/div/div/div/div/div/div"
+            )
+            sleep(1)
+
+            # Lấy mã xác nhận
+            code = self.get_code_mail()
+            if code is None:
+                print("⚠️ Không lấy được mã xác nhận. Dừng thao tác.")
+                self.driver.quit()
+                return False, '', ''
+            if code == '':
+                print("⚠️ Không lấy được mã xác nhận. Dừng thao tác.")
+                self.driver.quit()
+                return False, '', ''
+            # Nhập mã xác nhận
+            self.wait_and_send_keys(
+                "/html/body/div[1]/div/div/div/div[3]/div/div/div[2]/div/div/div/div/div/div/div/div[4]/div[2]/div[1]/div[2]/div/div/div/div/div[1]/input",
+                code
+            )
+            sleep(1)
+            self.wait_and_click(
+                "/html/body/div[7]/div[1]/div/div[2]/div/div/div/div/div/div/div[4]/div[2]/div[1]/div/div/div/div/div/div[2]/div/div[2]/div/div/div"
+            )
+            return True, '', ''
         except Exception as e:
             print("Lỗi đổi mật khẩu:", e)
             self.driver.quit()
-            return False, self.generated_pass, []
+            return False, '', ''
         
     def  forgot_password(self):
         pass
