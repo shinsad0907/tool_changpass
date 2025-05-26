@@ -178,13 +178,6 @@ class Main:
                 self.wait_and_click("/html/body/div[1]/div/div[6]/div[1]/div/div[2]/div[2]/div[3]/button[2]")
             except:
                 pass
-            # self.wait_and_click("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[2]/div/div/div[2]/div/div[2]/div/div/div/div/div/div")
-            # self.wait_and_send_keys("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[2]/div/div/div[1]/div/div/div[2]/div[2]/input", self.account['email'])
-            # self.wait_and_click("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[2]/div/div/div[2]/div/div[1]/div/div/div/div/div/div")
-            # self.wait_and_send_keys("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[3]/div/div/div[1]/div/div/div[2]/div[2]/input", self.account['code'])
-            # self.wait_and_click("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[3]/div/div/div[3]/div/div[1]/div/div/div/div/div/div")
-            # self.wait_and_send_keys("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[2]/div/div/div/div/div[2]/div[2]/input", self.generated_pass)
-            # self.wait_and_click("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[3]/div/div/div/div[1]/div/div/div/div/div/div")
             self.wait_and_send_keys("/html/body/div[1]/div[1]/div[2]/div[2]/div/div/form/div[1]/section[2]/div/div/div[1]/div/input", self.generated_pass)
             self.wait_and_click("/html/body/div[1]/div[1]/div[2]/div[2]/div/div/form/div[2]/button")
             sleep(20)
