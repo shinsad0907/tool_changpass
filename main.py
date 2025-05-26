@@ -10,8 +10,7 @@ import string
 import requests
 
 class Main:
-    def __init__(self, account, index=0, type_run='change_pass'):
-        self.type_run = type_run
+    def __init__(self, account, index=0):
         self.index = index
         self.account = account
 
@@ -62,6 +61,12 @@ class Main:
             EC.presence_of_element_located((By.XPATH, xpath))
         )
         human_typing(element, keys)
+    
+    def wait_and_get_text(self, xpath, timeout=60):
+        element = WebDriverWait(self.driver, timeout).until(
+            EC.presence_of_element_located((By.XPATH, xpath))
+        )
+        return element.text
 
     def get_cookies(self):
         try:
@@ -225,8 +230,52 @@ class Main:
             self.driver.quit()
             return False, '', ''
         
-    def  forgot_password(self):
-        pass
+    def forgot_password(self):
+        try:
+            # Truy cập trang quên mật khẩu Facebook
+            self.driver.get("https://www.facebook.com/login/identify/?ctx=recover&ars=facebook_login&from_login_screen=0")
+            
+            # Nhập email vào ô input 
+            self.wait_and_send_keys(
+                "/html/body/div[1]/div[1]/div[1]/div/div[2]/div/div/form/div/div[2]/div/table/tbody/tr[2]/td[2]/input",
+                self.account['email']  # Email lấy từ dữ liệu tài khoản
+            )
+            
+            # Click nút Tìm kiếm
+            self.wait_and_click(
+                "/html/body/div[1]/div[1]/div[1]/div/div[2]/div/div/form/div/div[3]/div/div[1]/button"
+            )
+            
+            try:
+                # Chờ và kiểm tra xem có thông báo lỗi không
+                element = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, '/html/body/div[1]/div[1]/div[1]/div/div[2]/div/div/form/div/div[2]/div[1]/div[1]'))
+                )
+                element.click()
+                
+                # Nếu thấy thông báo lỗi -> trả về thất bại
+                if element.is_displayed():
+                    self.driver.quit()
+                    return False, '', ''
+                    
+            except:
+                # Nếu không có lỗi -> click nút Tiếp tục
+                self.wait_and_click("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[3]/div/div[1]/button")
+                check_text = self.wait_and_get_text('/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[2]/div[2]')
+                print("Kiểm tra văn bản:", check_text)
+                if "code" in check_text.split():
+                    self.driver.quit()
+                    return True, '', ''  # Trả về thành công
+        except Exception as e:
+            # Xử lý lỗi nếu có
+            print("Lỗi đổi mật khẩu:", e)
+            self.driver.quit()  # Đóng trình duyệt
+            return False, '', ''  # Trả về thất bại
+        # https://www.facebook.com/login/identify/?ctx=recover&ars=facebook_login&from_login_screen=0
+        # input mail /html/body/div[1]/div[1]/div[1]/div/div[2]/div/div/form/div/div[2]/div/table/tbody/tr[2]/td[2]/input
+        # click search /html/body/div[1]/div[1]/div[1]/div/div[2]/div/div/form/div/div[3]/div/div[1]/button
+        # text eror /html/body/div[1]/div[1]/div[1]/div/div[2]/div/div/form/div/div[2]/div[1]/div[1]
+        # click change pass /html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[3]/div/div[1]/button
 
 
     def main(self):

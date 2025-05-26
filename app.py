@@ -47,8 +47,8 @@ class MailToolApp(QMainWindow):
         
         # Set the login tab as active
         self.tab_widget.setCurrentWidget(self.tab_change_mail)
-        self.tab_widget.setCurrentWidget(self.tab_change_pass)
         self.tab_widget.setCurrentWidget(self.tab_forgot_pass)
+        self.tab_widget.setCurrentWidget(self.tab_change_pass)
 
         
         # Create footer
@@ -71,7 +71,7 @@ class MailToolApp(QMainWindow):
         self.forgot_pass_tree_widget.setSelectionMode(QTreeWidget.ExtendedSelection)
         
         # Set headers for the tree widget
-        headers = ["###", "STT", "UID", "COOKIE", "MAIL", "PASSMAIL", "PROXY", "CODE", "STATUS"]
+        headers = ["###", "STT", "MAIL", "PROXY", "STATUS"]
         self.forgot_pass_tree_widget.setColumnCount(len(headers))
         self.forgot_pass_tree_widget.setHeaderLabels(headers)
         
@@ -141,19 +141,19 @@ class MailToolApp(QMainWindow):
         proxy_layout.addWidget(self.forgot_pass_proxy_combo)
         settings_layout.addLayout(proxy_layout)
         
-        # Password configuration
-        pass_layout = QHBoxLayout()
-        pass_label = QLabel("Mật khẩu mới:")
-        self.forgot_pass_type_combo = QComboBox()
-        self.forgot_pass_type_combo.addItems(["Tự nhập", "Ngẫu nhiên"])
-        pass_layout.addWidget(pass_label)
-        pass_layout.addWidget(self.forgot_pass_type_combo)
-        settings_layout.addLayout(pass_layout)
+        # # Password configuration
+        # pass_layout = QHBoxLayout()
+        # pass_label = QLabel("Mật khẩu mới:")
+        # self.forgot_pass_type_combo = QComboBox()
+        # self.forgot_pass_type_combo.addItems(["Tự nhập", "Ngẫu nhiên"])
+        # pass_layout.addWidget(pass_label)
+        # pass_layout.addWidget(self.forgot_pass_type_combo)
+        # settings_layout.addLayout(pass_layout)
         
-        # Password input
-        self.forgot_pass_input = QLineEdit()
-        self.forgot_pass_input.setPlaceholderText("Nhập mật khẩu mới")
-        settings_layout.addWidget(self.forgot_pass_input)
+        # # Password input
+        # self.forgot_pass_input = QLineEdit()
+        # self.forgot_pass_input.setPlaceholderText("Nhập mật khẩu mới")
+        # settings_layout.addWidget(self.forgot_pass_input)
         
         # Thread configuration
         thread_layout = QHBoxLayout()
@@ -214,7 +214,7 @@ class MailToolApp(QMainWindow):
         context_menu.addAction(delete_mail_action)
         
         add_mail_action.triggered.connect(self.add_forgot_pass_mail)
-        add_proxy_action.triggered.connect(self.add_forgot_pass_proxy)
+        # add_proxy_action.triggered.connect(self.add_forgot_pass_proxy)
         select_all_action.triggered.connect(self.select_all_forgot_pass)
         deselect_all_action.triggered.connect(self.deselect_all_forgot_pass)
         select_errors_action.triggered.connect(self.select_errors_forgot_pass)
@@ -222,46 +222,247 @@ class MailToolApp(QMainWindow):
         
         context_menu.exec_(QCursor.pos())
 
-    def add_forgot_pass_mail(self):
-        copied_text = pyperclip.paste()
-        sample_data = []
+    def update_forgot_pass_counts(self):
+        # Update total count
+        total_count = self.forgot_pass_tree_widget.topLevelItemCount()
+        self.forgot_pass_total_label.setText(str(total_count))
         
-        for account in copied_text.strip().split('\n'):
-            if '|' in account:
-                parts = account.split('|')
-                if len(parts) >= 2:
-                    uid = parts[0]
-                    email = parts[1]
-                    sample_data.append((uid, email))
+        # Count selected items
+        selected_count = 0
+        success_count = 0
+        fail_count = 0
         
-        start_index = self.forgot_pass_tree_widget.topLevelItemCount()
-        for i, (uid, email) in enumerate(sample_data):
-            item = QTreeWidgetItem(self.forgot_pass_tree_widget)
-            checkbox = QCheckBox()
-            checkbox.setChecked(True)
-            self.forgot_pass_tree_widget.setItemWidget(item, 0, checkbox)
-            item.setText(1, str(start_index + i + 1))
-            item.setText(2, uid)
-            item.setText(3, "")
-            item.setText(4, email)
-            item.setText(5, "")
-            item.setText(6, "")
-            item.setText(7, "")
-            item.setText(8, "")
+        for i in range(total_count):
+            item = self.forgot_pass_tree_widget.topLevelItem(i)
+            checkbox = self.forgot_pass_tree_widget.itemWidget(item, 0)
+            
+            # Count checked items
+            if checkbox and checkbox.isChecked():
+                selected_count += 1
+                
+            # Count success/fail based on status
+            status = item.text(4).lower()
+            if "thành công" in status:
+                success_count += 1
+            elif "thất bại" in status:
+                fail_count += 1
         
+        # Update labels
+        self.forgot_pass_selection_label.setText(f"Đã chọn: {selected_count}")
+        self.forgot_pass_success_label.setText(str(success_count))
+        self.forgot_pass_fail_label.setText(str(fail_count))
+
+    def select_all_forgot_pass(self):
+        # Select all items in forgot password tab
+        for i in range(self.forgot_pass_tree_widget.topLevelItemCount()):
+            item = self.forgot_pass_tree_widget.topLevelItem(i)
+            checkbox = self.forgot_pass_tree_widget.itemWidget(item, 0)
+            if checkbox:
+                checkbox.setChecked(True)
         self.update_forgot_pass_counts()
 
+    def deselect_all_forgot_pass(self):
+        # Deselect all items in forgot password tab
+        for i in range(self.forgot_pass_tree_widget.topLevelItemCount()):
+            item = self.forgot_pass_tree_widget.topLevelItem(i)
+            checkbox = self.forgot_pass_tree_widget.itemWidget(item, 0)
+            if checkbox:
+                checkbox.setChecked(False)
+        self.update_forgot_pass_counts()
+
+    def select_errors_forgot_pass(self):
+        # Select items with error status in forgot password tab
+        for i in range(self.forgot_pass_tree_widget.topLevelItemCount()):
+            item = self.forgot_pass_tree_widget.topLevelItem(i)
+            if "thất bại" in item.text(4).lower():  # Check STATUS column
+                checkbox = self.forgot_pass_tree_widget.itemWidget(item, 0)
+                if checkbox:
+                    checkbox.setChecked(True)
+        self.update_forgot_pass_counts()
+
+    def delete_forgot_pass_mail(self):
+        # Delete selected items in forgot password tab
+        selected_items = []
+        for i in range(self.forgot_pass_tree_widget.topLevelItemCount()):
+            item = self.forgot_pass_tree_widget.topLevelItem(i)
+            checkbox = self.forgot_pass_tree_widget.itemWidget(item, 0)
+            if checkbox and checkbox.isChecked():
+                selected_items.append(item)
+        
+        if not selected_items:
+            QMessageBox.warning(self, "Cảnh báo", "Vui lòng chọn email cần xóa!")
+            return
+        
+        # Remove selected items
+        for item in selected_items:
+            index = self.forgot_pass_tree_widget.indexOfTopLevelItem(item)
+            self.forgot_pass_tree_widget.takeTopLevelItem(index)
+        
+        # Update counts
+        self.update_forgot_pass_counts()
+
+    def add_forgot_pass_mail(self):
+        # Lấy nội dung từ clipboard
+        copied_text = pyperclip.paste().strip()
+        if not copied_text:
+            QMessageBox.warning(self, "Cảnh báo", "Clipboard trống!")
+            return
+            
+        # Khởi tạo số thứ tự bắt đầu
+        start_index = self.forgot_pass_tree_widget.topLevelItemCount()
+        
+        try:
+            # Xử lý từng dòng email
+            for i, email in enumerate(copied_text.split('\n')):
+                email = email.strip()
+                if email:  # Kiểm tra email không rỗng
+                    item = QTreeWidgetItem(self.forgot_pass_tree_widget)
+                    
+                    # Tạo checkbox và đặt vào cột đầu tiên
+                    checkbox = QCheckBox()
+                    checkbox.setChecked(True)
+                    self.forgot_pass_tree_widget.setItemWidget(item, 0, checkbox)
+                    
+                    # Đặt các giá trị cho các cột
+                    item.setText(1, str(start_index + i + 1))  # STT
+                    item.setText(2, email)  # MAIL
+                    item.setText(3, "")  # PROXY
+                    item.setText(4, "")  # STATUS
+            
+            # Cập nhật số liệu
+            self.update_forgot_pass_counts()
+            
+        except Exception as e:
+            QMessageBox.warning(self, "Lỗi", f"Có lỗi xảy ra khi thêm mail: {str(e)}")
+
     def start_forgot_pass_processing(self):
-        # Logic xử lý quên mật khẩu
-        pass
+        # Get checked items
+        checked_items = []
+        for i in range(self.forgot_pass_tree_widget.topLevelItemCount()):
+            item = self.forgot_pass_tree_widget.topLevelItem(i)
+            checkbox = self.forgot_pass_tree_widget.itemWidget(item, 0)
+            if checkbox and checkbox.isChecked():
+                item_data = {
+                    "index": i,
+                    "email": item.text(2)
+                }
+                checked_items.append(item_data)
+        
+        # Validate selection
+        if not checked_items:
+            QMessageBox.warning(self, "Cảnh báo", "Vui lòng chọn ít nhất một email để xử lý!")
+            return
+
+        # Get configuration
+        proxy_enabled = self.forgot_pass_proxy_check.isChecked()
+        proxy_type = self.forgot_pass_proxy_combo.currentText()
+        num_threads = self.forgot_pass_thread_spin.value()
+
+        # Create worker thread
+        self.forgot_pass_worker = WorkerThread(num_threads)
+        
+        # Connect signals
+        self.forgot_pass_worker.update_status.connect(self.update_forgot_pass_status)
+        self.forgot_pass_worker.update_counts.connect(self.update_forgot_pass_result_counts)
+
+        # Update UI
+        self.forgot_pass_start_button.setEnabled(False)
+        self.forgot_pass_stop_button.setEnabled(True)
+
+        # Collect all data
+        all_items = []
+        for i in range(self.forgot_pass_tree_widget.topLevelItemCount()):
+            item = self.forgot_pass_tree_widget.topLevelItem(i)
+            checkbox = self.forgot_pass_tree_widget.itemWidget(item, 0)
+            if checkbox and checkbox.isChecked():
+                item_data = {
+                    "selected": True,
+                    "stt": item.text(1),
+                    "email": item.text(2),
+                    "proxy": item.text(3),
+                    "status": item.text(4)
+                }
+                all_items.append(item_data)
+
+        # Create config
+        config_info = {
+            'account': all_items,
+            'proxy': f"{'yes' if proxy_enabled else 'no'} ({proxy_type if proxy_enabled else ''})",
+            'thread': num_threads,
+            'type': 'forgot_pass'
+        }
+
+        # Save config
+        with open('data.json', 'w', encoding='utf-8') as f:
+            json.dump(config_info, f, ensure_ascii=False, indent=4)
+
+        # Start processing
+        self.forgot_pass_worker.start()
 
     def stop_forgot_pass_processing(self):
-        # Logic dừng xử lý
-        pass
+        if self.forgot_pass_worker and self.forgot_pass_worker.isRunning():
+            self.forgot_pass_worker.stop()
+            self.forgot_pass_worker.wait()
+            self.forgot_pass_worker = None
+            
+        self.forgot_pass_start_button.setEnabled(True)
+        self.forgot_pass_stop_button.setEnabled(False)
+        QMessageBox.information(self, "Thông báo", "Đã dừng xử lý quên mật khẩu!")
 
     def export_forgot_pass_data(self):
-        # Logic xuất dữ liệu
-        pass
+        # Get selected items
+        selected_lines = []
+        for i in range(self.forgot_pass_tree_widget.topLevelItemCount()):
+            item = self.forgot_pass_tree_widget.topLevelItem(i)
+            checkbox = self.forgot_pass_tree_widget.itemWidget(item, 0)
+            if checkbox and checkbox.isChecked():
+                email = item.text(2)
+                status = item.text(4)
+                line = f"{email}|{status}"
+                selected_lines.append(line)
+
+        if not selected_lines:
+            QMessageBox.warning(self, "Cảnh báo", "Không có dữ liệu được chọn để xuất!")
+            return
+
+        # Create default path
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "output", f"forgot_pass_data_{timestamp}.txt")
+
+        # Show save dialog
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Lưu file TXT",
+            default_path,
+            "Text Files (*.txt)"
+        )
+
+        if not file_path:
+            return
+
+        # Write file
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                for line in selected_lines:
+                    f.write(line + '\n')
+            QMessageBox.information(self, "Thông báo", f"Đã xuất dữ liệu thành công!\nFile: {file_path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi", f"Không thể lưu file: {str(e)}")
+
+    def update_forgot_pass_status(self, item_index, password, status, cookie):
+        if 0 <= item_index < self.forgot_pass_tree_widget.topLevelItemCount():
+            item = self.forgot_pass_tree_widget.topLevelItem(item_index)
+            item.setText(4, status)
+            
+            # Cập nhật màu nền
+            color = QColor("#90ee90") if "thành công" in status.lower() else QColor("#ff9999")
+            for col in range(item.columnCount()):
+                item.setBackground(col, color) # Light red
+
+    def update_forgot_pass_result_counts(self, success_count, fail_count):
+        self.forgot_pass_success_label.setText(str(success_count))
+        self.forgot_pass_fail_label.setText(str(fail_count))
 
 
 
@@ -714,19 +915,7 @@ class MailToolApp(QMainWindow):
         }
         
         # Save configuration to file
-        def get_app_dir():
-            if getattr(sys, 'frozen', False):
-                # Nếu là exe thì lấy thư mục chứa file exe
-                return os.path.dirname(sys.executable)
-            else:
-                # Nếu là chạy bằng python thì lấy thư mục file .py
-                return os.path.dirname(os.path.abspath(__file__))
-
-        # Đường dẫn tuyệt đối tới change_mail_data.json
-        json_path = os.path.join(get_app_dir(), 'data.json')
-
-        # Ghi file
-        with open(json_path, 'w', encoding='utf-8') as f:
+        with open('data.json', 'w', encoding='utf-8') as f:
             json.dump(config_info, f, ensure_ascii=False, indent=4)
             
         # Start the worker thread
@@ -750,14 +939,14 @@ class MailToolApp(QMainWindow):
             #     item.setText(5, new_email)
             # # Update password and status
             # item.setText(6, password)
-            item.setText(9, status)
+            item.setText(4, status)
             
             # Update color based on status
             if "thành công" in status.lower():
-                for col in range(9):
+                for col in range(4):
                     item.setBackground(col, QColor("#90ee90"))  # Light green
             else:
-                for col in range(9):
+                for col in range(4):
                     item.setBackground(col, QColor("#ff9999"))  # Light red
 
     def update_change_mail_result_counts(self, success_count, fail_count):
@@ -1054,19 +1243,7 @@ class MailToolApp(QMainWindow):
             'thread': num_threads,
             'type': 'change_pass'
         }
-        def get_app_dir():
-            if getattr(sys, 'frozen', False):
-                # Nếu là exe thì lấy thư mục chứa file exe
-                return os.path.dirname(sys.executable)
-            else:
-                # Nếu là chạy bằng python thì lấy thư mục file .py
-                return os.path.dirname(os.path.abspath(__file__))
-
-        # Đường dẫn tuyệt đối tới data.json
-        json_path = os.path.join(get_app_dir(), 'data.json')
-
-        # Ghi file
-        with open(json_path, 'w', encoding='utf-8') as f:
+        with open('data.json', 'w', encoding='utf-8') as f:
             json.dump(config_info, f, ensure_ascii=False, indent=4)
         # Start the worker thread
         self.worker_thread.start()
@@ -1081,20 +1258,21 @@ class MailToolApp(QMainWindow):
         self.stop_button.setEnabled(False)
         QMessageBox.information(self, "Thông báo", "Đã dừng xử lý!")
     
-    def update_item_status(self, item_index,password, status,cookie):
+    def update_item_status(self, item_index, password, status, cookie):
         if 0 <= item_index < self.tree_widget.topLevelItemCount():
             item = self.tree_widget.topLevelItem(item_index)
-            item.setText(3, cookie)
-            item.setText(5, password)
+            
+            # Cập nhật thông tin tùy theo loại thao tác
+            if password:  # Đổi mật khẩu
+                item.setText(5, password)
+            if cookie:  # Có cookie mới
+                item.setText(3, cookie)
             item.setText(8, status)
             
-            # Update color based on status
-            if "thành công" in status.lower():
-                for col in range(8):
-                    item.setBackground(col, QColor("#90ee90"))  # Light green
-            else:
-                for col in range(8):
-                    item.setBackground(col, QColor("#ff9999"))  # Light red
+            # Cập nhật màu nền
+            color = QColor("#90ee90") if "thành công" in status.lower() else QColor("#ff9999")
+            for col in range(item.columnCount()):
+                item.setBackground(col, color)  # Light red
     
     def update_login_counts(self, success_count, fail_count):
         self.login_success_label.setText(str(success_count))
