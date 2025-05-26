@@ -1,0 +1,406 @@
+name: Build EXE
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.set-version.outputs.version }}
+      release-created: ${{ steps.set-version.outputs.release-created }}
+      uuid: ${{ steps.generate-uuid.outputs.uuid }}
+      product-id: ${{ steps.get-product-id.outputs.product-id }}
+    steps:
+    - uses: actions/checkout@v4
+    
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.9'
+        
+    - name: Install dependencies
+      run: |
+        pip install pyinstaller
+        if (Test-Path requirements.txt) {
+          pip install -r requirements.txt
+        } else {
+          echo "No requirements.txt found, skipping..."
+        }
+      shell: powershell
+      
+    - name: Build application (folder mode)
+      run: |
+        pyinstaller --onedir --windowed --name="MyApp" app.py
+      shell: powershell
+      
+    - name: Get Product ID from config.json
+      id: get-product-id
+      run: |
+        if (Test-Path "config.json") {
+          $config = Get-Content "config.json" | ConvertFrom-Json
+          $productId = $config.id
+          if ($productId) {
+            echo "product-id=$productId" >> $env:GITHUB_OUTPUT
+            echo "✅ Product ID: $productId"
+          } else {
+            echo "❌ No ID found in config.json"
+            exit 1
+          }
+        } else {
+          echo "❌ config.json not found!"
+          exit 1
+        }
+      shell: powershell
+      
+    - name: Generate UUID
+      id: generate-uuid
+      run: |
+        $uuid = [guid]::NewGuid().ToString()
+        echo "uuid=$uuid" >> $env:GITHUB_OUTPUT
+        echo "✅ Generated UUID: $uuid"
+      shell: powershell
+      
+    - name: Create internal folder structure and files
+      run: |
+        # Tạo các thư mục cần thiết
+        New-Item -ItemType Directory -Force -Path "dist/MyApp/internal"
+        New-Item -ItemType Directory -Force -Path "dist/MyApp/config"
+        New-Item -ItemType Directory -Force -Path "dist/MyApp/data"
+        
+        # Copy các file cần thiết
+        if (Test-Path "README.md") {
+          Copy-Item "README.md" "dist/MyApp/"
+        }
+        if (Test-Path "config.json") {
+          Copy-Item "config.json" "dist/MyApp/config/"
+        }
+        
+        # Tạo version.txt
+        "App Version: ${{ github.sha }}" | Out-File -FilePath "dist/MyApp/version.txt"
+        
+        # Tạo version_client.json với UUID (không BOM)
+        $versionClientData = @{
+          version_client = "${{ steps.generate-uuid.outputs.uuid }}"
+          product_id = "${{ steps.get-product-id.outputs.product-id }}"
+          created_at = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+          commit_sha = "${{ github.sha }}"
+        } | ConvertTo-Json -Depth 2
+        
+        # Ghi file vào _internal (PyInstaller folder)
+        $versionClientData | Out-File -FilePath "dist/MyApp/_internal/version_client.json" -Encoding UTF8 -NoNewline
+        
+        # Copy thêm vào root để backup
+        $versionClientData | Out-File -FilePath "dist/MyApp/version_client.json" -Encoding UTF8 -NoNewline
+        
+        echo "✅ Created version_client.json in _internal folder with UUID: ${{ steps.generate-uuid.outputs.uuid }}"
+        
+        # Kiểm tra file đã tạo
+        if (Test-Path "dist/MyApp/_internal/version_client.json") {
+          echo "✅ File exists in _internal folder"
+          Get-Content "dist/MyApp/_internal/version_client.json" | Write-Host
+        } else {
+          echo "❌ File NOT created in _internal folder"
+          exit 1
+        }
+      shell: powershell
+      
+    - name: Verify folder structure
+      run: |
+        echo "=== Verifying build structure ==="
+        echo "Root MyApp folder:"
+        Get-ChildItem "dist/MyApp" | Select-Object Name, Mode | Format-Table
+        
+        echo "`n_internal folder contents:"
+        if (Test-Path "dist/MyApp/_internal") {
+          Get-ChildItem "dist/MyApp/_internal" | Select-Object Name, Length | Format-Table
+        } else {
+          echo "❌ _internal folder not found!"
+        }
+        
+        echo "`nChecking version_client.json locations:"
+        if (Test-Path "dist/MyApp/_internal/version_client.json") {
+          echo "✅ Found in _internal/"
+          $content = Get-Content "dist/MyApp/_internal/version_client.json" -Raw
+          echo "Content preview: $($content.Substring(0, [Math]::Min(100, $content.Length)))"
+        } else {
+          echo "❌ NOT found in _internal/"
+        }
+        
+        if (Test-Path "dist/MyApp/version_client.json") {
+          echo "✅ Found in root/"
+        } else {
+          echo "❌ NOT found in root/"
+        }
+      shell: powershell
+      
+    - name: Create ZIP package
+      run: |
+        cd dist
+        Compress-Archive -Path MyApp -DestinationPath MyApp-windows.zip
+        
+        # Hiển thị nội dung để kiểm tra
+        Write-Host "ZIP package contents:"
+        Expand-Archive -Path MyApp-windows.zip -DestinationPath temp_check -Force
+        
+        Write-Host "`n=== Full structure check ==="
+        Get-ChildItem -Recurse temp_check/MyApp | Select-Object FullName, Length | Format-Table
+        
+        Write-Host "`n=== Looking for version_client.json ==="
+        Get-ChildItem -Recurse temp_check/MyApp -Filter "version_client.json" | Select-Object FullName, Length | Format-Table
+        
+        Remove-Item -Recurse -Force temp_check
+        
+        Write-Host "ZIP file created successfully: MyApp-windows.zip"
+        Write-Host "ZIP file size: $((Get-Item MyApp-windows.zip).Length) bytes"
+      shell: powershell
+      
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: MyApp-windows
+        path: dist/MyApp-windows.zip
+        
+    - name: Set version output
+      id: set-version
+      run: |
+        if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          VERSION=$(echo ${{ github.ref }} | sed 's/refs\/tags\///')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "release-created=tag" >> $GITHUB_OUTPUT
+        else
+          echo "version=" >> $GITHUB_OUTPUT
+          echo "release-created=main" >> $GITHUB_OUTPUT
+        fi
+      shell: bash
+        
+    - name: Create Release (if tag pushed)
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/MyApp-windows.zip
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        body: |
+
+          ## 🚀 Phiên bản mới
+          
+          ### Thay đổi
+          - Tự động build từ commit: ${{ github.sha }}
+          - Build time: ${{ github.run_number }}
+          - UUID: ${{ steps.generate-uuid.outputs.uuid }}
+          
+          ### Cài đặt
+          1. Tải file ZIP
+          2. Giải nén
+          3. Chạy MyApp.exe
+          
+          ### Cấu trúc thư mục
+          ```
+          MyApp/
+          ├── MyApp.exe
+          ├── version.txt
+          ├── version_client.json (backup)
+          ├── internal/
+          ├── config/
+          │   └── config.json
+          ├── data/
+          └── _internal/ (PyInstaller files)
+              ├── version_client.json ← MAIN FILE
+              └── ... (other PyInstaller files)
+          ```
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+
+  auto-release:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.PAT_TOKEN }}
+        
+    - name: Get next version
+      id: version
+      run: |
+        # Lấy tag mới nhất
+        LATEST_TAG=$(git tag -l "v*" --sort=-version:refname | head -n1)
+        
+        if [ -z "$LATEST_TAG" ]; then
+          # Nếu chưa có tag nào, bắt đầu từ v1.0.0
+          NEW_VERSION="v1.0.0"
+        else
+          echo "Latest tag: $LATEST_TAG"
+          
+          # Loại bỏ 'v' và tách các số
+          VERSION_NUMBER=$(echo $LATEST_TAG | sed 's/^v//')
+          
+          # Tách major, minor, patch
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_NUMBER"
+          
+          # Tăng patch version
+          PATCH=$((PATCH + 1))
+          
+          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+        fi
+        
+        echo "New version: $NEW_VERSION"
+        echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: MyApp-windows
+        path: ./release
+        
+    - name: Create auto release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        name: "Auto Release ${{ steps.version.outputs.version }}"
+        files: ./release/MyApp-windows.zip
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        body: |
+          ## 🤖 Tự động phát hành
+          
+          Phiên bản này được tự động tạo từ commit mới nhất trên main branch.
+          
+          **Commit:** ${{ github.sha }}
+          **Thời gian:** ${{ github.event.head_commit.timestamp }}
+          **Thông điệp:** ${{ github.event.head_commit.message }}
+          **UUID:** ${{ needs.build.outputs.uuid }}
+          
+          ### Tải xuống
+          - `MyApp-windows.zip` - Phiên bản Windows (folder format)
+          
+          ### Nội dung package
+          - File `version_client.json` trong `_internal/` để kiểm tra cập nhật
+          - Thư mục `config/` chứa cấu hình
+          - Thư mục `internal/` và `data/` để lưu trữ
+
+          
+          ### Thay đổi
+          - Tự động build từ commit: ${{ github.sha }}
+          - Build time: ${{ github.run_number }}
+          
+          ### Cài đặt
+          1. Tải file ZIP
+          2. Giải nén
+          3. Chạy MyApp.exe
+          
+          ### Cấu trúc thư mục
+          ```
+          MyApp/
+          ├── MyApp.exe
+          ├── internal/
+          ├── config/
+          ├── data/
+          └── _internal/ (PyInstaller files)
+          ```
+          
+          ### 🔧 Cài đặt
+          1. Tải file ZIP
+          2. Giải nén vào thư mục bất kỳ
+          3. Chạy `MyApp.exe`
+          
+          ### 📊 Thông tin build
+          - **Commit:** ${{ github.sha }}
+          - **Build number:** ${{ github.run_number }}
+          - **Build time:** ${{ github.event.head_commit.timestamp }}
+          - **Commit message:** ${{ github.event.head_commit.message }}
+          
+          ### 🔄 API Update Check
+          Sử dụng endpoint: `https://api.github.com/repos/${{ github.repository }}/releases/latest`
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Job riêng để tự động tạo release khi push code (không cần tag)
+  auto-release:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Get next version
+      id: version
+      run: |
+        gh release create "v1.0.${{ github.run_number }}" `
+          --title "MyApp v1.0.${{ github.run_number }}" `
+          --notes "## MyApp Build ${{ github.run_number }}
+
+        **📦 Download:** MyApp-v1.0.${{ github.run_number }}.zip
+
+        **📁 Structure:**
+        - MyApp.exe (main app)
+        - internal/ (your modules)
+        - config/ (configuration)  
+        - data/ (app data)
+
+        **🔧 Build Info:**
+        - Commit: ${{ github.sha }}
+        - Build: ${{ github.run_number }}
+        - Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" `
+          --latest `
+          dist/MyApp-v1.0.${{ github.run_number }}.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+
+  notify-update:
+    runs-on: ubuntu-latest
+    needs: [build, auto-release]
+    if: always() && (needs.build.outputs.release-created == 'tag' || needs.auto-release.result == 'success')
+    steps:
+      - name: Send UUID to API
+        run: |
+          PRODUCT_ID="${{ needs.build.outputs.product-id }}"
+          UUID="${{ needs.build.outputs.uuid }}"
+          
+          if [ -z "$PRODUCT_ID" ] || [ -z "$UUID" ]; then
+            echo "Missing PRODUCT_ID or UUID"
+            echo "PRODUCT_ID: $PRODUCT_ID"
+            echo "UUID: $UUID"
+            exit 1
+          fi
+          
+          echo "Sending to API:"
+          echo "  - Product ID: $PRODUCT_ID"
+          echo "  - UUID: $UUID"
+          
+          # Gửi UUID lên API
+          RESPONSE=$(curl -X POST \
+            https://web-mmo-blush.vercel.app/api/update_notify \
+            -H "Content-Type: application/json" \
+            -d "{\"product_id\": \"$PRODUCT_ID\", \"version_client\": \"$UUID\"}" \
+            --max-time 30 \
+            --retry 3 \
+            --retry-delay 5 \
+            --write-out "HTTP_CODE:%{http_code}" \
+            --silent)
+          
+          HTTP_CODE=$(echo "$RESPONSE" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2)
+          BODY=$(echo "$RESPONSE" | sed 's/HTTP_CODE:[0-9]*$//')
+          
+          echo "API Response:"
+          echo "  - HTTP Code: $HTTP_CODE"
+          echo "  - Body: $BODY"
+          
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "Successfully sent UUID to API"
+          else
+            echo "Failed to send UUID to API (HTTP $HTTP_CODE)"
+            echo "Response: $BODY"
+          fi
+        shell: bash
