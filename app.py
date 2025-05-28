@@ -13,11 +13,89 @@ import json
 import sys
 from worker_module import WorkerThread
 from check_key import get_or_create_key
+from PyQt5.QtCore import QSettings
+
+class SettingsDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Thông tin hỗ trợ")
+        self.setFixedWidth(400)
+        
+        layout = QVBoxLayout(self)
+        
+        # Support info group
+        support_group = QGroupBox("Thông tin liên hệ")
+        support_layout = QVBoxLayout()
+        
+        # Facebook
+        fb_layout = QHBoxLayout()
+        fb_label = QLabel("Facebook:")
+        fb_link = QLabel('<a href="https://www.facebook.com/shinsad.copyright.97">shinsad.copyright.97</a>')
+        fb_link.setOpenExternalLinks(True)
+        fb_layout.addWidget(fb_label)
+        fb_layout.addWidget(fb_link)
+        fb_layout.addStretch()
+        
+        # Zalo
+        zalo_layout = QHBoxLayout()
+        zalo_label = QLabel("Zalo:")
+        zalo_number = QLabel("0916733227")  # Thay số điện thoại thật
+        zalo_layout.addWidget(zalo_label)
+        zalo_layout.addWidget(zalo_number)
+        zalo_layout.addStretch()
+        
+        # Website
+        web_layout = QHBoxLayout()
+        web_label = QLabel("Website:")
+        web_link = QLabel('<a href="https://web-mmo-blush.vercel.app">Web hỗ trợ phần mềm</a>')  # Thay URL thật
+        web_link.setOpenExternalLinks(True)
+        web_layout.addWidget(web_label)
+        web_layout.addWidget(web_link)
+        web_layout.addStretch()
+        
+        support_layout.addLayout(fb_layout)
+        support_layout.addLayout(zalo_layout)
+        support_layout.addLayout(web_layout)
+        support_group.setLayout(support_layout)
+        
+        # Instructions group
+        instructions_group = QGroupBox("Hướng dẫn sử dụng")
+        instructions_layout = QVBoxLayout()
+        instructions_text = QLabel(
+            "1. Nhập danh sách tài khoản cần xử lý\n"
+            "2. Chọn cấu hình phù hợp\n"
+            "3. Nhấn START để bắt đầu\n"
+            "4. Export kết quả khi hoàn thành\n\n"
+            "* Liên hệ hỗ trợ nếu gặp lỗi"
+        )
+        instructions_layout.addWidget(instructions_text)
+        instructions_group.setLayout(instructions_layout)
+        
+        # Close button
+        close_btn = QPushButton("Đóng")
+        close_btn.clicked.connect(self.accept)
+        
+        # Add to main layout
+        layout.addWidget(support_group)
+        layout.addWidget(instructions_group)
+        layout.addWidget(close_btn)
+
 
 class MailToolApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Đăng Nhập - Đổi Pass - Đổi Mail - GMX Mail.com - HP Tools - FB: shinsad.copyright.97")
+        try:
+            key_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "key.json")
+            key = None
+            # Nếu đã có file key.json thì đọc key
+            if os.path.exists(key_path):
+                with open(key_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    self.current_key = data.get("key", "")
+
+        except:
+            self.current_key = ''
+        self.setWindowTitle(" Đổi Pass - Đổi Mail - Quên Pass - web-mmo-blush.vercel.app - Shin Tools - FB: shinsad.copyright.97")
         self.setGeometry(100, 100, 780, 520)
         self.setStyleSheet("background-color: #d9e1f2;")
         
@@ -1472,32 +1550,158 @@ class MailToolApp(QMainWindow):
     def create_footer(self, layout):
         footer_layout = QHBoxLayout()
         
-        key_label = QLabel("Key: 8ff6d6348acbe82a8fb2b504280b02a4")
-        copy_label = QLabel("COPY")
-        copy_label.setStyleSheet("color: blue; text-decoration: underline; cursor: pointer;")
-        copy_label.mousePressEvent = lambda event: self.copy_to_clipboard("8ff6d6348acbe82a8fb2b504280b02a4")
+        # Left side - Key info with better styling
+        key_info_layout = QHBoxLayout()
         
-        hsd_label = QLabel("HSD: 29 days")
-        check_label = QLabel("CheckChromedriver")
-        check_label.setStyleSheet("color: red; text-decoration: underline; cursor: pointer;")
+        # Key section with better styling
+        key_label = QLabel("Key:")
+        key_label.setStyleSheet("font-weight: bold; color: #2c3e50;")
         
-        author_label = QLabel("Author:")
-        author_name_label = QLabel("Triều Lân")
-        author_name_label.setStyleSheet("color: blue; text-decoration: underline; cursor: pointer;")
+        masked_key = self.mask_key(self.current_key)
+        self.key_value_label = QLabel(masked_key)
+        self.key_value_label.setStyleSheet("""
+            color: #007bff;
+            background: #f8f9fa;
+            padding: 2px 8px;
+            border-radius: 3px;
+            border: 1px solid #dee2e6;
+        """)
         
-        footer_layout.addWidget(key_label)
-        footer_layout.addWidget(copy_label)
-        footer_layout.addWidget(hsd_label)
-        footer_layout.addWidget(check_label)
-        footer_layout.addWidget(author_label)
-        footer_layout.addWidget(author_name_label)
+        copy_button = QPushButton("Copy")
+        copy_button.setStyleSheet("""
+            QPushButton {
+                padding: 2px 8px;
+                background: #007bff;
+                color: white;
+                border: none;
+                border-radius: 3px;
+                max-width: 60px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #0056b3;
+            }
+        """)
+        copy_button.clicked.connect(lambda: self.copy_to_clipboard(self.current_key))
+        
+        # Expiry date section with better styling
+        expiry_label = QLabel("HSD:")
+        expiry_label.setStyleSheet("font-weight: bold; margin-left: 20px; color: #2c3e50;")
+        self.expiry_value_label = QLabel()
+        self.expiry_value_label.setStyleSheet("color: #28a745; font-weight: bold;")
+        self.update_expiry_date()
+        
+        key_info_layout.addWidget(key_label)
+        key_info_layout.addWidget(self.key_value_label)
+        key_info_layout.addWidget(copy_button)
+        key_info_layout.addWidget(expiry_label)
+        key_info_layout.addWidget(self.expiry_value_label)
+        
+        # Right side - Support button with enhanced styling
+        support_button = QPushButton("🔔 Hỗ trợ")
+        support_button.setStyleSheet("""
+            QPushButton {
+                padding: 4px 15px;
+                background: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 3px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background: #c0392b;
+            }
+        """)
+        support_button.clicked.connect(self.show_settings_dialog)
+        
+        # Add authentication label
+        auth_label = QLabel("FB: shinsad.copyright.97")
+        auth_label.setStyleSheet("""
+            color: #7f8c8d;
+            font-style: italic;
+            margin-right: 10px;
+        """)
+        
+        # Add to main footer layout
+        footer_layout.addLayout(key_info_layout)
         footer_layout.addStretch()
+        footer_layout.addWidget(auth_label)
+        footer_layout.addWidget(support_button)
         
         layout.addLayout(footer_layout)
-        
+
+    def update_expiry_date(self):
+        """Cập nhật ngày hết hạn từ server"""
+        try:
+            from supabase import create_client
+            base_url = "https://cgogqyorfzpxaiotscfp.supabase.co"
+            token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnb2dxeW9yZnpweGFpb3RzY2ZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5ODMyMzcsImV4cCI6MjA2MzU1OTIzN30.enehR9wGHJf1xKO7d4XBbmjfdm80EvBKzaaPO3NPVAM'
+            supabase = create_client(base_url, token)
+            
+            # Kiểm tra key có tồn tại không
+            if not self.current_key:
+                self.expiry_value_label.setText("Chưa có key")
+                return
+
+            # Lấy dữ liệu từ server
+            res = supabase.table("data_user").select("*").execute()
+            
+            # Kiểm tra response có data không
+            if not res or not hasattr(res, 'data') or not res.data:
+                self.expiry_value_label.setText("Không có dữ liệu")
+                return
+
+            # Tìm key trong dữ liệu
+            found_key = False
+            for data in res.data:
+                purchases = data.get('purchases', [])
+                if not purchases:  # Nếu purchases rỗng, tiếp tục vòng lặp
+                    continue
+                    
+                for purchase in purchases:
+                    if purchase.get('key') == self.current_key:
+                        found_key = True
+                        expire_date = purchase.get('date_key_part')
+                        if expire_date:
+                            try:
+                                expiry = datetime.strptime(expire_date, "%Y-%m-%d").date()
+                                days_left = (expiry - datetime.now().date()).days
+                                
+                                if days_left <= 7:
+                                    self.expiry_value_label.setStyleSheet("color: red; font-weight: bold;")
+                                else:
+                                    self.expiry_value_label.setStyleSheet("color: #28a745;")
+                                self.expiry_value_label.setText(f"{days_left} ngày")
+                                return
+                            except ValueError:
+                                self.expiry_value_label.setText("Ngày không hợp lệ")
+                                return
+
+            # Nếu không tìm thấy key
+            if not found_key:
+                self.expiry_value_label.setText("Key không hợp lệ")
+                                
+        except Exception as e:
+            print("Lỗi khi cập nhật HSD:", str(e))
+            self.expiry_value_label.setText("Lỗi kết nối")
+    def mask_key(self, key):
+        """Rút gọn key hiển thị"""
+        if len(key) > 12:
+            return f"{key[:6]}...{key[-6:]}"
+        return key
+   
     def copy_to_clipboard(self, text):
+        """Copy key và hiển thị thông báo"""
         clipboard = QApplication.clipboard()
         clipboard.setText(text)
+        # Hiển thị thông báo nhỏ
+        QMessageBox.information(self, "Thông báo", "Đã copy key thành công!", QMessageBox.Ok)
+
+
+    def show_settings_dialog(self):
+        dialog = SettingsDialog(self)
+        dialog.exec_()
 
 
 if __name__ == "__main__":

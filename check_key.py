@@ -9,6 +9,8 @@ from supabase import create_client
 import os
 import json
 import sys
+import uuid
+
 class KeyInputDialog(QDialog):
     def __init__(self):
         super().__init__()
@@ -41,6 +43,15 @@ def check_version(key,id_product, version_client):
                 return True
             else:
                 return False
+            
+
+def get_mac():
+    mac = uuid.getnode()
+    mac_address = ':'.join(['{:02x}'.format((mac >> i) & 0xff)
+                            for i in range(0, 8 * 6, 8)][::-1])
+    return mac_address
+
+
 
 def check_key(key):
     version_client_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "version_client.json")
@@ -54,6 +65,8 @@ def check_key(key):
     for data in res.data:
         if data['username'] == user_id:
             purchases = data['purchases']
+            uid_mac = data['ip_mac']
+            print("uid_mac:", uid_mac)
             for data_purchase in purchases:
                 if data_purchase['key'] == key:
                     date_key_part = data_purchase.get('date_key_part')
@@ -74,18 +87,30 @@ def check_key(key):
                         QMessageBox.critical(None, "Lỗi", "Key đã hết hạn sử dụng!")
                         return False
                     else:
+                        # ...existing code...
                         if check_version(key,id_product, version_client):
-                            QMessageBox.information(None, "Thông báo", "Key hợp lệ!")
-                            return True
-                        else:
-                            QMessageBox.critical(None, "Lỗi", "Phiên bản client không tương thích với key!")
-                            return False
+                            current_mac = get_mac()
+                            if uid_mac is None:
+                                # Trường hợp chưa có ip_mac, cập nhật ip_mac mới
+                                supabase.table("data_user").update({"ip_mac": current_mac}).eq("username", user_id).execute()
+                                QMessageBox.information(None, "Thông báo", "Key đã được kích hoạt thành công!")
+                                return True
+                            elif uid_mac == current_mac:
+                                # Trường hợp ip_mac trùng khớp
+                                QMessageBox.information(None, "Thông báo", "Key đã được kích hoạt thành công!")
+                                return True
+                            else:
+                                # Trường hợp ip_mac không khớp
+                                QMessageBox.critical(None, "Lỗi", "Key đã được kích hoạt trên thiết bị khác!")
+                                return False
+                        # ...existing code...
                 else:
                     QMessageBox.critical(None, "Lỗi", "Key không hợp lệ!")
                     return False
     # Nếu không tìm thấy user
     QMessageBox.critical(None, "Lỗi", "Key không hợp lệ!")
     return False
+
 
 def get_or_create_key(parent=None):
     key_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "key.json")
