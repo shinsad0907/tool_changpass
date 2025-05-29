@@ -30,6 +30,7 @@ class KeyInputDialog(QDialog):
 base_url = "https://cgogqyorfzpxaiotscfp.supabase.co"
 token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnb2dxeW9yZnpweGFpb3RzY2ZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5ODMyMzcsImV4cCI6MjA2MzU1OTIzN30.enehR9wGHJf1xKO7d4XBbmjfdm80EvBKzaaPO3NPVAM'
 supabase = create_client(base_url, token)
+
 def decode(key):
     decoded = base64.urlsafe_b64decode(key.encode()).decode()
     data = json.loads(decoded)
@@ -68,7 +69,10 @@ def check_key(key):
             uid_mac = data['ip_mac']
             print("uid_mac:", uid_mac)
             for data_purchase in purchases:
+                print(data_purchase['key'], key)
                 if data_purchase['key'] == key:
+                    print("Key:", key)
+                    print("User ID:", user_id)
                     date_key_part = data_purchase.get('date_key_part')
                     id_product = data_purchase.get('product_id')
                     with open(version_client_path, 'r', encoding='utf-8-sig') as f:
@@ -103,6 +107,9 @@ def check_key(key):
                                 # Trường hợp ip_mac không khớp
                                 QMessageBox.critical(None, "Lỗi", "Key đã được kích hoạt trên thiết bị khác!")
                                 return False
+                        else:
+                            QMessageBox.critical(None, "Lỗi", "Phiên bản client không tương thích với key!")
+                            return False
                         # ...existing code...
                 else:
                     QMessageBox.critical(None, "Lỗi", "Key không hợp lệ!")

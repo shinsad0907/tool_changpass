@@ -279,7 +279,7 @@ class MailToolApp(QMainWindow):
         add_proxy_action = QAction("Nhập Proxy", self)
         select_all_action = QAction("Chọn tất cả", self)
         deselect_all_action = QAction("Bỏ chọn tất cả", self)
-        select_errors_action = QAction("Chọn bôi đen", self)
+        select_errors_action = QAction("Chọn tài khoản lỗi", self)
         delete_mail_action = QAction("Xóa mail", self)
         
         context_menu.addAction(add_mail_action)
@@ -757,7 +757,7 @@ class MailToolApp(QMainWindow):
         deselect_all_action = QAction("Bỏ chọn tất cả", self)
         deselect_all_action.setIcon(QIcon.fromTheme("edit-clear"))
         
-        select_errors_action = QAction("Chọn bôi đen", self)
+        select_errors_action = QAction("Chọn tài khoản lỗi", self)
         select_errors_action.setIcon(QIcon.fromTheme("edit-select"))
         
         delete_mail_action = QAction("Xóa mail", self)
@@ -1385,7 +1385,7 @@ class MailToolApp(QMainWindow):
         deselect_all_action = QAction("Bỏ chọn tất cả", self)
         deselect_all_action.setIcon(QIcon.fromTheme("edit-clear"))
         
-        select_errors_action = QAction("Chọn bôi đen", self)
+        select_errors_action = QAction("Chọn tài khoản lỗi", self)
         select_errors_action.setIcon(QIcon.fromTheme("edit-select"))
         
         delete_mail_action = QAction("Xóa mail", self)
