@@ -8,7 +8,6 @@ from selenium.webdriver.support import expected_conditions as EC
 import random
 import string
 import requests
-from fake_useragent import UserAgent
 
 
 class Main:
@@ -16,8 +15,25 @@ class Main:
         self.index = index
         self.account = account
 
-        ua = UserAgent()
-        user_agent = ua.random
+
+        def generate_smart_user_agent():
+            # Phiên bản Chrome hợp lệ (đừng để quá thấp hoặc quá cao)
+            chrome_version = f"{random.randint(120, 126)}.0.{random.randint(5000, 6000)}.{random.randint(100, 300)}"
+
+            # Hệ điều hành giả lập một chút khác biệt
+            os_variants = [
+                "Windows NT 10.0; Win64; x64",
+                "Windows NT 10.0; WOW64",
+                "Macintosh; Intel Mac OS X 10_15_7",
+                "X11; Linux x86_64",
+            ]
+            os_choice = random.choice(os_variants)
+
+            # Tạo user-agent
+            ua = f"Mozilla/5.0 ({os_choice}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_version} Safari/537.36"
+            return ua
+
+
 
         options = webdriver.ChromeOptions()
         # mobile_emulation = {"deviceName": "iPhone X"}
@@ -28,7 +44,7 @@ class Main:
         options.add_argument("--disable-software-rasterizer")
         options.add_argument("--window-size=375,812")
 
-        options.add_argument(f"user-agent={user_agent}")
+        options.add_argument(f"user-agent={generate_smart_user_agent()}")
 
         prefs = {"profile.default_content_setting_values.notifications": 2}
         options.add_experimental_option("prefs", prefs)
