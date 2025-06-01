@@ -44,7 +44,7 @@ class Main:
         options.add_argument("--disable-software-rasterizer")
         options.add_argument("--window-size=375,812")
 
-        options.add_argument(f"user-agent={generate_smart_user_agent()}")
+        #options.add_argument(f"user-agent={generate_smart_user_agent()}")
 
         prefs = {"profile.default_content_setting_values.notifications": 2}
         options.add_experimental_option("prefs", prefs)
