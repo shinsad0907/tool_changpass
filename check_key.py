@@ -10,6 +10,8 @@ import os
 import json
 import sys
 import uuid
+import psutil
+
 
 class KeyInputDialog(QDialog):
     def __init__(self):
@@ -47,10 +49,14 @@ def check_version(key,id_product, version_client):
             
 
 def get_mac():
-    mac = uuid.getnode()
-    mac_address = ':'.join(['{:02x}'.format((mac >> i) & 0xff)
-                            for i in range(0, 8 * 6, 8)][::-1])
-    return mac_address
+    for interface, addrs in psutil.net_if_addrs().items():
+        for addr in addrs:
+            if addr.family.name == 'AF_LINK':
+                mac = addr.address
+                # Lọc địa chỉ hợp lệ, bỏ qua MAC trống hoặc local-loopback
+                if mac and mac != '00:00:00:00:00:00' and not interface.lower().startswith(('lo', 'vir', 'vm', 'docker')):
+                    return mac
+    return None  # nếu không tìm được MAC phù hợp
 
 
 

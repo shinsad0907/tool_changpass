@@ -8,13 +8,16 @@ from selenium.webdriver.support import expected_conditions as EC
 import random
 import string
 import requests
+from fake_useragent import UserAgent
+
 
 class Main:
     def __init__(self, account, index=0):
         self.index = index
         self.account = account
 
-        print(self.account)
+        ua = UserAgent()
+        user_agent = ua.random
 
         options = webdriver.ChromeOptions()
         # mobile_emulation = {"deviceName": "iPhone X"}
@@ -25,7 +28,6 @@ class Main:
         options.add_argument("--disable-software-rasterizer")
         options.add_argument("--window-size=375,812")
 
-        user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
         options.add_argument(f"user-agent={user_agent}")
 
         prefs = {"profile.default_content_setting_values.notifications": 2}
