@@ -36,12 +36,12 @@ jobs:
       
     - name: Build application (folder mode)
       run: |
-        # Kiểm tra xem có file facebook.ico không
+        # Kiem tra xem co file facebook.ico khong
         if (Test-Path "facebook.ico") {
-          Write-Host "✅ Found facebook.ico, building with icon..."
+          Write-Host "[SUCCESS] Found facebook.ico, building with icon..."
           pyinstaller --onedir --windowed --icon="facebook.ico" --name="MyApp" app.py
         } else {
-          Write-Host "⚠️ facebook.ico not found, building without icon..."
+          Write-Host "[WARNING] facebook.ico not found, building without icon..."
           pyinstaller --onedir --windowed --name="MyApp" app.py
         }
       shell: powershell
@@ -50,7 +50,7 @@ jobs:
       run: |
         Write-Host "=== Auto-detecting folders to copy ==="
         
-        # Danh sách các folder sẽ bỏ qua (không copy)
+        # Danh sach cac folder se bo qua (khong copy)
         $excludeFolders = @(
           "dist", "build", "__pycache__", ".git", ".github", 
           "node_modules", ".vscode", ".idea", "venv", "env",
@@ -58,19 +58,19 @@ jobs:
           "site-packages", ".tox", ".nox"
         )
         
-        # Lấy tất cả folder trong root directory
+        # Lay tat ca folder trong root directory
         $allFolders = Get-ChildItem -Directory | Where-Object { 
           $_.Name -notin $excludeFolders 
         }
         
         Write-Host "Folders found to copy:"
         if ($allFolders.Count -eq 0) {
-          Write-Host "  ⚠️ No folders to copy"
+          Write-Host "  [WARNING] No folders to copy"
         } else {
-          $allFolders | ForEach-Object { Write-Host "  📁 $($_.Name)" }
+          $allFolders | ForEach-Object { Write-Host "  [FOLDER] $($_.Name)" }
         }
         
-        # Copy folders vào _internal
+        # Copy folders vao _internal
         foreach ($folder in $allFolders) {
           $sourcePath = $folder.FullName
           $destPath = "dist/MyApp/_internal/$($folder.Name)"
@@ -79,9 +79,9 @@ jobs:
           
           try {
             Copy-Item -Path $sourcePath -Destination $destPath -Recurse -Force
-            Write-Host "✅ Successfully copied folder: $($folder.Name)"
+            Write-Host "[SUCCESS] Successfully copied folder: $($folder.Name)"
           } catch {
-            Write-Host "❌ Failed to copy folder $($folder.Name): $($_.Exception.Message)"
+            Write-Host "[ERROR] Failed to copy folder $($folder.Name): $($_.Exception.Message)"
           }
         }
         
@@ -92,9 +92,9 @@ jobs:
       run: |
         if (Test-Path "facebook.ico") {
           Copy-Item "facebook.ico" "dist/MyApp/"
-          Write-Host "✅ Copied facebook.ico to dist folder"
+          Write-Host "[SUCCESS] Copied facebook.ico to dist folder"
         } else {
-          Write-Host "⚠️ facebook.ico not found, skipping copy"
+          Write-Host "[WARNING] facebook.ico not found, skipping copy"
         }
       shell: powershell
       
@@ -115,14 +115,14 @@ jobs:
             $productId = $config.id
             if ($productId) {
               echo "product-id=$productId" >> $env:GITHUB_OUTPUT
-              echo "✅ Product ID: $productId"
+            echo "[SUCCESS] Product ID: $productId"
               break
             }
           }
         }
         
         if (-not $productId) {
-          echo "❌ No Product ID found in any config.json"
+          echo "[ERROR] No Product ID found in any config.json"
           exit 1
         }
       shell: powershell
@@ -132,7 +132,7 @@ jobs:
       run: |
         $uuid = [guid]::NewGuid().ToString()
         echo "uuid=$uuid" >> $env:GITHUB_OUTPUT
-        echo "✅ Generated UUID: $uuid"
+        echo "[SUCCESS] Generated UUID: $uuid"
       shell: powershell
       
     - name: Create internal folder structure and files
@@ -169,14 +169,14 @@ jobs:
         # Copy thêm vào root để backup
         $versionClientData | Out-File -FilePath "dist/MyApp/version_client.json" -Encoding UTF8 -NoNewline
         
-        echo "✅ Created version_client.json in _internal folder with UUID: ${{ steps.generate-uuid.outputs.uuid }}"
+        echo "[SUCCESS] Created version_client.json in _internal folder with UUID: ${{ steps.generate-uuid.outputs.uuid }}"
         
-        # Kiểm tra file đã tạo
+        # Kiem tra file da tao
         if (Test-Path "dist/MyApp/_internal/version_client.json") {
-          echo "✅ File exists in _internal folder"
+          echo "[SUCCESS] File exists in _internal folder"
           Get-Content "dist/MyApp/_internal/version_client.json" | Write-Host
         } else {
-          echo "❌ File NOT created in _internal folder"
+          echo "[ERROR] File NOT created in _internal folder"
           exit 1
         }
       shell: powershell
@@ -196,29 +196,29 @@ jobs:
             $_.Name -notlike "*__pycache__*"
           } | Select-Object FullName | Format-Table -AutoSize
         } else {
-          echo "❌ _internal folder not found!"
+          echo "[ERROR] _internal folder not found!"
         }
         
         echo "`nChecking version_client.json locations:"
         if (Test-Path "dist/MyApp/_internal/version_client.json") {
-          echo "✅ Found in _internal/"
+          echo "[SUCCESS] Found in _internal/"
           $content = Get-Content "dist/MyApp/_internal/version_client.json" -Raw
           echo "Content preview: $($content.Substring(0, [Math]::Min(100, $content.Length)))"
         } else {
-          echo "❌ NOT found in _internal/"
+          echo "[ERROR] NOT found in _internal/"
         }
         
         if (Test-Path "dist/MyApp/version_client.json") {
-          echo "✅ Found in root/"
+          echo "[SUCCESS] Found in root/"
         } else {
-          echo "❌ NOT found in root/"
+          echo "[ERROR] NOT found in root/"
         }
         
-        # Kiểm tra icon file
+        # Kiem tra icon file
         if (Test-Path "dist/MyApp/facebook.ico") {
-          echo "✅ Icon file found in dist folder"
+          echo "[SUCCESS] Icon file found in dist folder"
         } else {
-          echo "⚠️ Icon file NOT found in dist folder"
+          echo "[WARNING] Icon file NOT found in dist folder"
         }
       shell: powershell
       
@@ -241,11 +241,11 @@ jobs:
           $_.Name -notlike "*egg-info*"
         } | Select-Object FullName | Format-Table
         
-        # Kiểm tra icon trong ZIP
+        # Kiem tra icon trong ZIP
         if (Test-Path "temp_check/MyApp/facebook.ico") {
-          Write-Host "✅ Icon file included in ZIP package"
+          Write-Host "[SUCCESS] Icon file included in ZIP package"
         } else {
-          Write-Host "⚠️ Icon file NOT included in ZIP package"
+          Write-Host "[WARNING] Icon file NOT included in ZIP package"
         }
         
         Remove-Item -Recurse -Force temp_check
