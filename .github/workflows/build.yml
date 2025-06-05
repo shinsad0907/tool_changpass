@@ -185,6 +185,40 @@ jobs:
           echo "[ERROR] File NOT created in _internal folder"
           exit 1
         }
+
+        # Di chuyển update_info.json ra ngoài
+        if (Test-Path "dist/MyApp/_internal/update_info.json") {
+          Move-Item "dist/MyApp/_internal/update_info.json" "dist/MyApp/" -Force
+          Write-Host "[SUCCESS] Moved update_info.json to root folder"
+        }
+        
+        # Di chuyển folder ldplayer ra ngoài
+        if (Test-Path "dist/MyApp/_internal/ldplayer") {
+          Move-Item "dist/MyApp/_internal/ldplayer" "dist/MyApp/" -Force
+          Write-Host "[SUCCESS] Moved ldplayer folder to root"
+        }
+        
+        # Di chuyển folder apk ra ngoài  
+        if (Test-Path "dist/MyApp/_internal/apk") {
+          Move-Item "dist/MyApp/_internal/apk" "dist/MyApp/" -Force
+          Write-Host "[SUCCESS] Moved apk folder to root"
+        }
+        
+        # Thêm vào phần kiểm tra cấu trúc
+        echo "`nChecking moved files/folders:"
+        $itemsToCheck = @(
+          "update_info.json",
+          "ldplayer",
+          "apk"
+        )
+        
+        foreach ($item in $itemsToCheck) {
+          if (Test-Path "dist/MyApp/$item") {
+            echo "[SUCCESS] Found $item in root folder"
+          } else {
+            echo "[WARNING] $item NOT found in root folder" 
+          }
+        }
       shell: powershell
       
     - name: Verify folder structure
