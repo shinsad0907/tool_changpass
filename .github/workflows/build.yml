@@ -151,6 +151,12 @@ jobs:
         if ((Test-Path "config.json") -and -not (Test-Path "dist/MyApp/config/config.json")) {
           Copy-Item "config.json" "dist/MyApp/config/"
         }
+        if (Test-Path "update_info.json") {
+          Copy-Item "update_info.json" "dist/MyApp/_internal/"
+          Write-Host "[SUCCESS] Copied update_info.json to _internal folder"
+        } else {
+          Write-Host "[WARNING] update_info.json not found in repository"
+        }
         
         # Tạo version.txt
         "App Version: ${{ github.sha }}" | Out-File -FilePath "dist/MyApp/version.txt"
