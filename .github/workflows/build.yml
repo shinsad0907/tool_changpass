@@ -36,24 +36,93 @@ jobs:
       
     - name: Build application (folder mode)
       run: |
-        pyinstaller --onedir --windowed --name="MyApp" app.py
+        # Kiểm tra xem có file facebook.ico không
+        if (Test-Path "facebook.ico") {
+          Write-Host "✅ Found facebook.ico, building with icon..."
+          pyinstaller --onedir --windowed --icon="facebook.ico" --name="MyApp" app.py
+        } else {
+          Write-Host "⚠️ facebook.ico not found, building without icon..."
+          pyinstaller --onedir --windowed --name="MyApp" app.py
+        }
+      shell: powershell
+      
+    - name: Auto-detect and copy folders to _internal
+      run: |
+        Write-Host "=== Auto-detecting folders to copy ==="
+        
+        # Danh sách các folder sẽ bỏ qua (không copy)
+        $excludeFolders = @(
+          "dist", "build", "__pycache__", ".git", ".github", 
+          "node_modules", ".vscode", ".idea", "venv", "env",
+          ".pytest_cache", "htmlcov", ".coverage", ".mypy_cache",
+          "site-packages", ".tox", ".nox"
+        )
+        
+        # Lấy tất cả folder trong root directory
+        $allFolders = Get-ChildItem -Directory | Where-Object { 
+          $_.Name -notin $excludeFolders 
+        }
+        
+        Write-Host "Folders found to copy:"
+        if ($allFolders.Count -eq 0) {
+          Write-Host "  ⚠️ No folders to copy"
+        } else {
+          $allFolders | ForEach-Object { Write-Host "  📁 $($_.Name)" }
+        }
+        
+        # Copy folders vào _internal
+        foreach ($folder in $allFolders) {
+          $sourcePath = $folder.FullName
+          $destPath = "dist/MyApp/_internal/$($folder.Name)"
+          
+          Write-Host "Copying folder: $($folder.Name) -> _internal/$($folder.Name)"
+          
+          try {
+            Copy-Item -Path $sourcePath -Destination $destPath -Recurse -Force
+            Write-Host "✅ Successfully copied folder: $($folder.Name)"
+          } catch {
+            Write-Host "❌ Failed to copy folder $($folder.Name): $($_.Exception.Message)"
+          }
+        }
+        
+        Write-Host "=== Auto-copy folders completed ==="
+      shell: powershell
+      
+    - name: Copy icon file to dist folder
+      run: |
+        if (Test-Path "facebook.ico") {
+          Copy-Item "facebook.ico" "dist/MyApp/"
+          Write-Host "✅ Copied facebook.ico to dist folder"
+        } else {
+          Write-Host "⚠️ facebook.ico not found, skipping copy"
+        }
       shell: powershell
       
     - name: Get Product ID from config.json
       id: get-product-id
       run: |
-        if (Test-Path "config.json") {
-          $config = Get-Content "config.json" | ConvertFrom-Json
-          $productId = $config.id
-          if ($productId) {
-            echo "product-id=$productId" >> $env:GITHUB_OUTPUT
-            echo "✅ Product ID: $productId"
-          } else {
-            echo "❌ No ID found in config.json"
-            exit 1
+        # Kiểm tra config.json trong _internal trước, sau đó root
+        $configPaths = @(
+          "dist/MyApp/_internal/config.json",
+          "config.json"
+        )
+        
+        $productId = $null
+        foreach ($configPath in $configPaths) {
+          if (Test-Path $configPath) {
+            Write-Host "Found config.json at: $configPath"
+            $config = Get-Content $configPath | ConvertFrom-Json
+            $productId = $config.id
+            if ($productId) {
+              echo "product-id=$productId" >> $env:GITHUB_OUTPUT
+              echo "✅ Product ID: $productId"
+              break
+            }
           }
-        } else {
-          echo "❌ config.json not found!"
+        }
+        
+        if (-not $productId) {
+          echo "❌ No Product ID found in any config.json"
           exit 1
         }
       shell: powershell
@@ -68,16 +137,18 @@ jobs:
       
     - name: Create internal folder structure and files
       run: |
-        # Tạo các thư mục cần thiết
+        # Tạo các thư mục cần thiết (nếu chưa có)
         New-Item -ItemType Directory -Force -Path "dist/MyApp/internal"
         New-Item -ItemType Directory -Force -Path "dist/MyApp/config"
         New-Item -ItemType Directory -Force -Path "dist/MyApp/data"
         
-        # Copy các file cần thiết
+        # Copy README.md nếu có
         if (Test-Path "README.md") {
           Copy-Item "README.md" "dist/MyApp/"
         }
-        if (Test-Path "config.json") {
+        
+        # Copy config.json vào config folder nếu có và chưa có
+        if ((Test-Path "config.json") -and -not (Test-Path "dist/MyApp/config/config.json")) {
           Copy-Item "config.json" "dist/MyApp/config/"
         }
         
@@ -119,6 +190,11 @@ jobs:
         echo "`n_internal folder contents:"
         if (Test-Path "dist/MyApp/_internal") {
           Get-ChildItem "dist/MyApp/_internal" | Select-Object Name, Length | Format-Table
+          
+          echo "`nAll copied folders in _internal:"
+          Get-ChildItem "dist/MyApp/_internal" -Directory | Where-Object { 
+            $_.Name -notlike "*__pycache__*"
+          } | Select-Object FullName | Format-Table -AutoSize
         } else {
           echo "❌ _internal folder not found!"
         }
@@ -137,6 +213,13 @@ jobs:
         } else {
           echo "❌ NOT found in root/"
         }
+        
+        # Kiểm tra icon file
+        if (Test-Path "dist/MyApp/facebook.ico") {
+          echo "✅ Icon file found in dist folder"
+        } else {
+          echo "⚠️ Icon file NOT found in dist folder"
+        }
       shell: powershell
       
     - name: Create ZIP package
@@ -151,8 +234,19 @@ jobs:
         Write-Host "`n=== Full structure check ==="
         Get-ChildItem -Recurse temp_check/MyApp | Select-Object FullName, Length | Format-Table
         
-        Write-Host "`n=== Looking for version_client.json ==="
-        Get-ChildItem -Recurse temp_check/MyApp -Filter "version_client.json" | Select-Object FullName, Length | Format-Table
+        Write-Host "`n=== Looking for copied folders in _internal ==="
+        Get-ChildItem -Recurse temp_check/MyApp/_internal -Directory | Where-Object { 
+          $_.Name -notlike "*__pycache__*" -and
+          $_.Name -notlike "*dist-info*" -and
+          $_.Name -notlike "*egg-info*"
+        } | Select-Object FullName | Format-Table
+        
+        # Kiểm tra icon trong ZIP
+        if (Test-Path "temp_check/MyApp/facebook.ico") {
+          Write-Host "✅ Icon file included in ZIP package"
+        } else {
+          Write-Host "⚠️ Icon file NOT included in ZIP package"
+        }
         
         Remove-Item -Recurse -Force temp_check
         
@@ -194,26 +288,37 @@ jobs:
           - Tự động build từ commit: ${{ github.sha }}
           - Build time: ${{ github.run_number }}
           - UUID: ${{ steps.generate-uuid.outputs.uuid }}
+          - ✨ Tự động copy tất cả folder vào _internal
+          - 🎨 EXE file có icon Facebook
           
           ### Cài đặt
           1. Tải file ZIP
           2. Giải nén
-          3. Chạy MyApp.exe
+          3. Chạy MyApp.exe (có icon Facebook)
           
           ### Cấu trúc thư mục
           ```
           MyApp/
-          ├── MyApp.exe
+          ├── MyApp.exe (with Facebook icon)
+          ├── facebook.ico
           ├── version.txt
           ├── version_client.json (backup)
           ├── internal/
           ├── config/
           │   └── config.json
           ├── data/
-          └── _internal/ (PyInstaller files)
+          └── _internal/ (PyInstaller files + Auto-copied folders)
               ├── version_client.json ← MAIN FILE
+              ├── [your_folders] ← AUTO COPIED FOLDERS ONLY
               └── ... (other PyInstaller files)
           ```
+          
+          ### 📁 Auto-copied content
+          Tất cả folder từ source code đã được tự động copy vào `_internal/` 
+          để đảm bảo ứng dụng có thể truy cập được khi chạy exe.
+          
+          ### 🎨 Icon Support
+          EXE file đã được gắn icon Facebook (facebook.ico)
       env:
         GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
 
@@ -281,37 +386,40 @@ jobs:
           **Thông điệp:** ${{ github.event.head_commit.message }}
           **UUID:** ${{ needs.build.outputs.uuid }}
           
+          ### 📁 Tính năng mới
+          - ✨ **Auto-copy folders**: Tự động copy tất cả folder vào `_internal/`
+          - 🔍 **Smart detection**: Bỏ qua các folder không cần thiết (.git, __pycache__, etc.)
+          - 📦 **Complete package**: Đảm bảo exe có thể truy cập tất cả resource folder
+          - 🎨 **Icon support**: EXE file có icon Facebook
+          
           ### Tải xuống
-          - `MyApp-windows.zip` - Phiên bản Windows (folder format)
+          - `MyApp-windows.zip` - Phiên bản Windows (folder format) với icon
           
           ### Nội dung package
           - File `version_client.json` trong `_internal/` để kiểm tra cập nhật
           - Thư mục `config/` chứa cấu hình
           - Thư mục `internal/` và `data/` để lưu trữ
-          
-          ### Thay đổi
-          - Tự động build từ commit: ${{ github.sha }}
-          - Build time: ${{ github.run_number }}
-          
-          ### Cài đặt
-          1. Tải file ZIP
-          2. Giải nén
-          3. Chạy MyApp.exe
+          - **Tất cả folder từ source** đã được copy vào `_internal/`
+          - **Icon Facebook** được gắn vào EXE file
           
           ### Cấu trúc thư mục
           ```
           MyApp/
-          ├── MyApp.exe
+          ├── MyApp.exe (with Facebook icon)
+          ├── facebook.ico
           ├── internal/
           ├── config/
           ├── data/
-          └── _internal/ (PyInstaller files)
+          └── _internal/ (PyInstaller files + Your folders)
+              ├── version_client.json
+              ├── [your_folders] ← AUTO COPIED FOLDERS ONLY
+              └── ... (PyInstaller runtime files)
           ```
           
           ### 🔧 Cài đặt
           1. Tải file ZIP
-          2. Giải nén vào thư mục bất kỳ
-          3. Chạy `MyApp.exe`
+          2. Giải nén vào thư mục bất kỳ  
+          3. Chạy `MyApp.exe` (có icon Facebook)
           
           ### 📊 Thông tin build
           - **Commit:** ${{ github.sha }}

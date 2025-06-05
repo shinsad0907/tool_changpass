@@ -3,7 +3,8 @@ from datetime import datetime
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QTabWidget, QVBoxLayout, QHBoxLayout, 
                            QTreeWidget, QTreeWidgetItem, QLabel, QFrame, QCheckBox, QRadioButton,
                            QComboBox, QSpinBox, QPushButton, QHeaderView, QMenu, QAction, QGroupBox,
-                           QLineEdit, QMessageBox, QFileDialog)
+                           QLineEdit, QMessageBox, QFileDialog, QDialog, QVBoxLayout, QScrollArea)
+
 from PyQt5.QtCore import Qt, QSize, QThread, pyqtSignal
 from PyQt5.QtGui import QColor, QCursor, QIcon
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
@@ -15,12 +16,191 @@ from worker_module import WorkerThread
 from check_key import get_or_create_key
 from PyQt5.QtCore import QSettings
 
+class UpdateDialog(QDialog):
+    def __init__(self, update_info, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("🎉 Thông tin cập nhật mới!")
+        self.setFixedWidth(500)
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #ffffff;
+            }
+            QLabel {
+                color: #2c3e50;
+                font-size: 13px;
+            }
+            QLabel#version {
+                font-size: 18px;
+                font-weight: bold;
+                color: #2980b9;
+            }
+            QLabel#date {
+                font-style: italic;
+                color: #7f8c8d;
+            }
+        """)
+
+        layout = QVBoxLayout(self)
+
+        # Header
+        header = QHBoxLayout()
+        version_label = QLabel(f"Phiên bản {update_info['version']}")
+        version_label.setObjectName("version")
+        date_label = QLabel(f"Cập nhật ngày: {update_info['last_update']}")
+        date_label.setObjectName("date")
+        header.addWidget(version_label)
+        header.addStretch()
+        header.addWidget(date_label)
+        layout.addLayout(header)
+
+        # Separator
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
+        line.setStyleSheet("background-color: #bdc3c7;")
+        layout.addWidget(line)
+
+        # Changelog content
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
+        
+        for section in update_info['changelog']:
+            # Section title
+            title = QLabel(section['title'])
+            title.setStyleSheet("""
+                font-size: 15px;
+                font-weight: bold;
+                color: #e74c3c;
+                margin-top: 10px;
+            """)
+            content_layout.addWidget(title)
+
+            # Section items
+            for item in section['items']:
+                item_label = QLabel(item)
+                item_label.setWordWrap(True)
+                item_label.setStyleSheet("margin-left: 20px;")
+                content_layout.addWidget(item_label)
+
+        scroll = QScrollArea()
+        scroll.setWidget(content)
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: transparent;
+            }
+        """)
+        layout.addWidget(scroll)
+
+        # Don't show again checkbox
+        self.dont_show = QCheckBox("Không hiển thị lại thông báo này")
+        self.dont_show.setStyleSheet("""
+            QCheckBox {
+                color: #7f8c8d;
+            }
+        """)
+        layout.addWidget(self.dont_show)
+
+        # Close button
+        close_btn = QPushButton("Đã hiểu")
+        close_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                padding: 8px;
+                font-weight: bold;
+                border-radius: 4px;
+                min-width: 100px;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+        """)
+        close_btn.clicked.connect(self.accept)
+        layout.addWidget(close_btn, alignment=Qt.AlignCenter)
+
+class SoftwareInstallDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Cài đặt phần mềm")
+        self.setFixedWidth(400)
+        layout = QVBoxLayout(self)
+
+        # Software list group
+        software_group = QGroupBox("Danh sách phần mềm cần thiết")
+        software_layout = QVBoxLayout()
+
+        # Add software items
+        self.software_items = [
+            {
+                "name": "LDPlayer",
+                "description": "Giả lập Android để chạy tool",
+                "url": "https://res.ldrescdn.com/download/LDPlayer9.exe?n=LDPlayer9_ens_1001_ld.exe",
+                "installed": False
+            },
+            {
+                "name": "Tesseract OCR", 
+                "description": "Công cụ nhận dạng text",
+                "url": "https://github.com/tesseract-ocr/tesseract/releases/download/5.5.0/tesseract-ocr-w64-setup-5.5.0.20241111.exe",
+                "installed": False
+            },
+        ]
+
+        for software in self.software_items:
+            item_layout = QHBoxLayout()
+            
+            # Software info
+            info_layout = QVBoxLayout()
+            name_label = QLabel(f"<b>{software['name']}</b>")
+            desc_label = QLabel(software['description'])
+            desc_label.setStyleSheet("color: #666;")
+            info_layout.addWidget(name_label)
+            info_layout.addWidget(desc_label)
+
+            # Status and buttons
+            button_layout = QVBoxLayout()
+            install_btn = QPushButton("Cài đặt")
+            install_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #28a745;
+                    color: white;
+                    padding: 5px;
+                    border: none;
+                    border-radius: 3px;
+                }
+                QPushButton:hover {
+                    background-color: #218838;
+                }
+            """)
+            install_btn.clicked.connect(lambda checked, url=software['url']: self.open_download_link(url))
+
+            button_layout.addWidget(install_btn)
+
+            # Add to item layout
+            item_layout.addLayout(info_layout, stretch=2)
+            item_layout.addLayout(button_layout, stretch=1)
+            
+            software_layout.addLayout(item_layout)
+            software_layout.addWidget(QFrame(frameShape=QFrame.HLine))
+
+        software_group.setLayout(software_layout)
+        layout.addWidget(software_group)
+
+        # Close button
+        close_btn = QPushButton("Đóng")
+        close_btn.clicked.connect(self.accept)
+        layout.addWidget(close_btn)
+
+    def open_download_link(self, url):
+        import webbrowser
+        webbrowser.open(url)
+
 class SettingsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Thông tin hỗ trợ")
         self.setFixedWidth(400)
-        
         layout = QVBoxLayout(self)
         
         # Support info group
@@ -80,10 +260,137 @@ class SettingsDialog(QDialog):
         layout.addWidget(instructions_group)
         layout.addWidget(close_btn)
 
+class ChangeMailSettingsDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Cài đặt nâng cao LDPlayer")
+        self.setFixedWidth(350)
+        layout = QVBoxLayout(self)
+
+        # Path LDPlayer
+        ld_layout = QHBoxLayout()
+        ld_label = QLabel("Path LDPlayer:")
+        self.ld_path_input = QLineEdit()
+        self.ld_path_input.setPlaceholderText("C:\\LDPlayer\\LDPlayer.exe")
+        ld_btn = QPushButton("...")
+        ld_btn.setFixedWidth(30)
+        ld_btn.clicked.connect(self.browse_ld_path)
+        ld_layout.addWidget(ld_label)
+        ld_layout.addWidget(self.ld_path_input)
+        ld_layout.addWidget(ld_btn)
+        layout.addLayout(ld_layout)
+
+        # Path pytesseract
+        tess_layout = QHBoxLayout()
+        tess_label = QLabel("Path pytesseract:")
+        self.tess_path_input = QLineEdit()
+        self.tess_path_input.setPlaceholderText("C:\\Program Files\\Tesseract-OCR\\tesseract.exe")
+        tess_btn = QPushButton("...")
+        tess_btn.setFixedWidth(30)
+        tess_btn.clicked.connect(self.browse_tess_path)
+        tess_layout.addWidget(tess_label)
+        tess_layout.addWidget(self.tess_path_input)
+        tess_layout.addWidget(tess_btn)
+        layout.addLayout(tess_layout)
+
+        # CPU
+        cpu_layout = QHBoxLayout()
+        cpu_label = QLabel("CPU:")
+        self.cpu_spin = QSpinBox()
+        self.cpu_spin.setRange(1, 16)
+        self.cpu_spin.setValue(2)
+        cpu_layout.addWidget(cpu_label)
+        cpu_layout.addWidget(self.cpu_spin)
+        layout.addLayout(cpu_layout)
+
+        # RAM
+        ram_layout = QHBoxLayout()
+        ram_label = QLabel("RAM (MB):")
+        self.ram_spin = QSpinBox()
+        self.ram_spin.setRange(512, 32768)
+        self.ram_spin.setSingleStep(512)
+        self.ram_spin.setValue(2048)
+        ram_layout.addWidget(ram_label)
+        ram_layout.addWidget(self.ram_spin)
+        layout.addLayout(ram_layout)
+
+        # DPI
+        dpi_layout = QHBoxLayout()
+        dpi_label = QLabel("DPI:")
+        self.dpi_spin = QSpinBox()
+        self.dpi_spin.setRange(120, 640)
+        self.dpi_spin.setValue(240)
+        dpi_layout.addWidget(dpi_label)
+        dpi_layout.addWidget(self.dpi_spin)
+        layout.addLayout(dpi_layout)
+
+        # Width
+        width_layout = QHBoxLayout()
+        width_label = QLabel("Width:")
+        self.width_spin = QSpinBox()
+        self.width_spin.setRange(400, 3840)
+        self.width_spin.setValue(350)
+        width_layout.addWidget(width_label)
+        width_layout.addWidget(self.width_spin)
+        layout.addLayout(width_layout)
+
+        # Height
+        height_layout = QHBoxLayout()
+        height_label = QLabel("Height:")
+        self.height_spin = QSpinBox()
+        self.height_spin.setRange(400, 2160)
+        self.height_spin.setValue(750)
+        height_layout.addWidget(height_label)
+        height_layout.addWidget(self.height_spin)
+        layout.addLayout(height_layout)
+
+        # Nút lưu
+        save_btn = QPushButton("Lưu")
+        save_btn.clicked.connect(self.accept)
+        layout.addWidget(save_btn)
+
+    def browse_ld_path(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Chọn file LDPlayer", "", "Executable (*.exe)")
+        if file_path:
+            self.ld_path_input.setText(file_path)
+
+    def browse_tess_path(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Chọn file pytesseract", "", "Executable (*.exe)")
+        if file_path:
+            self.tess_path_input.setText(file_path)
+    
+    def accept(self):
+        ld_path = self.ld_path_input.text()
+        tess_path = self.tess_path_input.text()
+        cpu = self.cpu_spin.value()
+        ram = self.ram_spin.value()
+        dpi = self.dpi_spin.value()
+        width = self.width_spin.value()
+        height = self.height_spin.value()
+
+        config_info = {
+            "ld_path": ld_path,
+            "tess_path": tess_path,
+            "cpu": cpu,
+            "ram": ram,
+            "dpi": dpi,
+            "width": width,
+            "height": height,
+            "CACHE": "1",
+            "OTHER": "1",
+            "ADB": "1"
+        }
+
+        with open('setting_ldplayer.json', 'w', encoding='utf-8') as f:
+            json.dump(config_info, f, ensure_ascii=False, indent=4)
+        QMessageBox.information(self, "Thông báo", "Cài đặt đã được lưu thành công!")
+        super().accept()
 
 class MailToolApp(QMainWindow):
+
     def __init__(self):
         super().__init__()
+        
         try:
             key_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "key.json")
             key = None
@@ -96,7 +403,7 @@ class MailToolApp(QMainWindow):
         except:
             self.current_key = ''
         self.setWindowTitle(" Đổi Pass - Đổi Mail - Quên Pass - web-mmo-blush.vercel.app - Shin Tools - FB: shinsad.copyright.97")
-        self.setGeometry(100, 100, 780, 520)
+        self.setGeometry(100, 100, 1100, 700)  # Tăng width và height
         self.setStyleSheet("background-color: #d9e1f2;")
         
         # Create main widget and layout
@@ -559,158 +866,126 @@ class MailToolApp(QMainWindow):
 
     def setup_change_mail_tab(self):
         # Main layout for the tab
-        change_mail_layout = QVBoxLayout(self.tab_change_mail)
-        change_mail_layout.setContentsMargins(10, 10, 10, 10)
-        
-        # Email list tree widget
+        layout = QVBoxLayout(self.tab_change_mail)
+        layout.setContentsMargins(10, 10, 10, 10)
+
+        # Tree widget
         self.change_mail_tree_widget = QTreeWidget()
         self.change_mail_tree_widget.setFrameStyle(QFrame.Box | QFrame.Plain)
         self.change_mail_tree_widget.setAlternatingRowColors(True)
         self.change_mail_tree_widget.setSelectionMode(QTreeWidget.ExtendedSelection)
-        
-        # Set headers for the tree widget
         headers = ["###", "STT", "UID", "PASSWORD", "COOKIE", "MAIL CŨ", "MAIL MỚI", "PASSMAIL", "PROXY", "STATUS"]
+        
         self.change_mail_tree_widget.setColumnCount(len(headers))
         self.change_mail_tree_widget.setHeaderLabels(headers)
-        # line = f"{uid}|{email}|{password}|{cookie}"
-        # Adjust column widths
         self.change_mail_tree_widget.header().setSectionResizeMode(QHeaderView.ResizeToContents)
-        self.change_mail_tree_widget.header().setSectionResizeMode(2, QHeaderView.Stretch)  # UID column stretches
-        self.change_mail_tree_widget.header().setSectionResizeMode(4, QHeaderView.Stretch)  # Mail cũ column stretches
-        self.change_mail_tree_widget.header().setSectionResizeMode(5, QHeaderView.Stretch)  # Mail mới column stretches
-        
-        # Style the header
+        self.change_mail_tree_widget.header().setSectionResizeMode(2, QHeaderView.Stretch)
+        self.change_mail_tree_widget.header().setSectionResizeMode(5, QHeaderView.Stretch)
         self.change_mail_tree_widget.setStyleSheet("""
             QTreeWidget::item:selected { background-color: #107bd2; color: white; }
             QTreeWidget::item { height: 25px; }
             QHeaderView::section { background-color: #d9e1f2; padding: 4px; }
         """)
-        
-        # Enable context menu
         self.change_mail_tree_widget.setContextMenuPolicy(Qt.CustomContextMenu)
         self.change_mail_tree_widget.customContextMenuRequested.connect(self.show_change_mail_context_menu)
-                
-        change_mail_layout.addWidget(self.change_mail_tree_widget)
-        
-        # Add "Đã chọn" label at the bottom of tree widget
+        layout.addWidget(self.change_mail_tree_widget)
+
+        # Đã chọn label
         self.change_mail_selection_label = QLabel("Đã chọn: 0")
         self.change_mail_selection_label.setAlignment(Qt.AlignRight)
-        change_mail_layout.addWidget(self.change_mail_selection_label)
-        
-        # Create bottom section with data and settings
+        self.change_mail_selection_label.setStyleSheet("font-size: 15px;")
+        layout.addWidget(self.change_mail_selection_label)
+
+        # Create bottom section (giống forgot pass)
         bottom_layout = QHBoxLayout()
-        
-        # Data section
-        data_group = QGroupBox("INFO")
-        data_layout = QVBoxLayout(data_group)
-        
-        # Create labels with values
+
+        # Thống kê
+        info_group = QGroupBox("THỐNG KÊ")
+        info_layout = QVBoxLayout(info_group)
         self.change_mail_total_label = QLabel("0")
-        self.change_mail_proxy_label = QLabel("1")
         self.change_mail_success_label = QLabel("0")
         self.change_mail_fail_label = QLabel("0")
-        
-        data_items = [
+        for text, label in [
             ("Tổng Mail:", self.change_mail_total_label),
-            ("Tổng Proxy:", self.change_mail_proxy_label),
-            ("Đổi thành công:", self.change_mail_success_label),
-            ("Đổi thất bại:", self.change_mail_fail_label)
-        ]
-        
-        for label_text, value_label in data_items:
-            row_layout = QHBoxLayout()
-            label = QLabel(label_text)
-            row_layout.addWidget(label)
-            row_layout.addWidget(value_label)
-            row_layout.addStretch()
-            data_layout.addLayout(row_layout)
-        
-        bottom_layout.addWidget(data_group)
-        
+            ("Thành công:", self.change_mail_success_label),
+            ("Thất bại:", self.change_mail_fail_label)
+        ]:
+            row = QHBoxLayout()
+            row.addWidget(QLabel(text))
+            row.addWidget(label)
+            row.addStretch()
+            info_layout.addLayout(row)
+
+        # Hàng dưới cùng: Thống kê | Proxy | Số luồng | Nút thao tác | Nút Cài đặt
+        bottom_layout = QHBoxLayout()
+        bottom_layout.addWidget(info_group)
+
         # Settings section
         settings_group = QGroupBox("CẤU HÌNH")
         settings_layout = QVBoxLayout(settings_group)
-        
-        # Proxy configuration
-        proxy_layout = QHBoxLayout()
+
+        # LDPlayer path
+        ld_layout = QHBoxLayout()
+        ld_label = QLabel("Path LDPlayer:")
+        self.ld_path_input = QLineEdit()
+        self.ld_path_input.setPlaceholderText("C:\\LDPlayer\\LDPlayer.exe")
+        ld_btn = QPushButton("...")
+        ld_btn.setFixedWidth(30)
+        ld_btn.clicked.connect(self.browse_ld_path)
+        open_ld_btn = QPushButton("Mở LDPlayer")
+        open_ld_btn.setStyleSheet("background-color: #f7ca18; color: black; min-width: 100px;")
+        open_ld_btn.clicked.connect(self.open_ldplayer)
+        ld_layout.addWidget(ld_label)
+        ld_layout.addWidget(self.ld_path_input)
+        ld_layout.addWidget(ld_btn)
+        ld_layout.addWidget(open_ld_btn)
+        settings_layout.addLayout(ld_layout)
+
+        # Proxy
+        proxy_group = QGroupBox("Proxy & Luồng")
+        proxy_layout = QVBoxLayout(proxy_group)
+        proxy_row = QHBoxLayout()
         self.change_mail_proxy_check = QCheckBox("Dùng Proxy:")
         self.change_mail_proxy_check.setChecked(True)
         self.change_mail_proxy_combo = QComboBox()
         self.change_mail_proxy_combo.addItems(["Tmproxy.com", "ProxyV6", "911S5", "ShopLike"])
-        proxy_layout.addWidget(self.change_mail_proxy_check)
-        proxy_layout.addWidget(self.change_mail_proxy_combo)
-        settings_layout.addLayout(proxy_layout)
-        
-        # # Mail API options
-        # mail_api_layout = QHBoxLayout()
-        # mail_api_label = QLabel("API Mail:")
-        # self.change_mail_api_combo = QComboBox()
-        # self.change_mail_api_combo.addItems(["dongvanfb.net", "mail.com", "mailnesia.com", "temp-mail.org"])
-        # mail_api_layout.addWidget(mail_api_label)
-        # mail_api_layout.addWidget(self.change_mail_api_combo)
-        # settings_layout.addLayout(mail_api_layout)
-        
-        # # Email domain options
-        # domain_layout = QHBoxLayout()
-        # domain_label = QLabel("Tên miền:")
-        # self.domain_combo = QComboBox()
-        # self.domain_combo.addItems(["mail.com", "gmx.com", "gmx.us", "email.com"])
-        # domain_layout.addWidget(domain_label)
-        # domain_layout.addWidget(self.domain_combo)
-        # settings_layout.addLayout(domain_layout)
-        
-        # # Email format options
-        # email_format_layout = QHBoxLayout()
-        # self.random_email_radio = QRadioButton("Email ngẫu nhiên")
-        # self.random_email_radio.setChecked(True)
-        # self.custom_email_radio = QRadioButton("Email tùy chỉnh")
-        # email_format_layout.addWidget(self.random_email_radio)
-        # email_format_layout.addWidget(self.custom_email_radio)
-        # settings_layout.addLayout(email_format_layout)
-        
-        # # Email custom format
-        # email_custom_layout = QHBoxLayout()
-        # self.email_format_input = QLineEdit()
-        # self.email_format_input.setPlaceholderText("Định dạng: name123, name.xyz, v.v...")
-        # self.email_format_input.setEnabled(False)
-        # email_custom_layout.addWidget(self.email_format_input)
-        # settings_layout.addLayout(email_custom_layout)
-        
-        # # Connect radio buttons
-        # self.random_email_radio.toggled.connect(self.toggle_email_format_input)
-        # self.custom_email_radio.toggled.connect(self.toggle_email_format_input)
-        
-        # Thread configuration
-        thread_layout = QHBoxLayout()
+        proxy_row.addWidget(self.change_mail_proxy_check)
+        proxy_row.addWidget(self.change_mail_proxy_combo)
+        proxy_layout.addLayout(proxy_row)
+
+        # Thread
+        thread_row = QHBoxLayout()
         thread_label = QLabel("Số luồng:")
         self.change_mail_thread_spin = QSpinBox()
         self.change_mail_thread_spin.setValue(5)
         self.change_mail_thread_spin.setRange(1, 20)
-        thread_layout.addWidget(thread_label)
-        thread_layout.addWidget(self.change_mail_thread_spin)
-        settings_layout.addLayout(thread_layout)
-        
-        # Delay between operations
-        delay_layout = QHBoxLayout()
-        delay_label = QLabel("Thời gian chờ (giây):")
-        self.delay_spin = QSpinBox()
-        self.delay_spin.setValue(3)
-        self.delay_spin.setRange(1, 30)
-        delay_layout.addWidget(delay_label)
-        delay_layout.addWidget(self.delay_spin)
-        settings_layout.addLayout(delay_layout)
-        
+        thread_row.addWidget(thread_label)
+        thread_row.addWidget(self.change_mail_thread_spin)
+        proxy_layout.addLayout(thread_row)
+
+        bottom_layout.addWidget(proxy_group)
+
+        # # Delay
+        # delay_layout = QHBoxLayout()
+        # delay_label = QLabel("Delay (giây):")
+        # self.delay_spin = QSpinBox()
+        # self.delay_spin.setValue(3)
+        # self.delay_spin.setRange(1, 30)
+        # delay_layout.addWidget(delay_label)
+        # delay_layout.addWidget(self.delay_spin)
+        # settings_layout.addLayout(delay_layout)
+
         bottom_layout.addWidget(settings_group)
-        
-        # Add file output and action buttons
+
+        # Action buttons
         action_layout = QVBoxLayout()
         file_output_label = QLabel("File Output")
         file_output_label.setAlignment(Qt.AlignCenter)
-        
+
         self.change_mail_start_button = QPushButton("START")
         self.change_mail_start_button.setStyleSheet("background-color: #90ee90; color: black; min-height: 25px;")
         self.change_mail_start_button.clicked.connect(self.start_change_mail_processing)
-        
+
         self.change_mail_stop_button = QPushButton("STOP")
         self.change_mail_stop_button.setStyleSheet("background-color: #ff9999; color: black; min-height: 25px;")
         self.change_mail_stop_button.clicked.connect(self.stop_change_mail_processing)
@@ -719,16 +994,47 @@ class MailToolApp(QMainWindow):
         self.change_mail_export_button = QPushButton("Export File")
         self.change_mail_export_button.setStyleSheet("background-color: #87ceeb; color: black; min-height: 25px;")
         self.change_mail_export_button.clicked.connect(self.export_change_mail_data)
-        self.change_mail_export_button.setEnabled(True)
-        
+
+        self.change_mail_settings_button = QPushButton("Cài đặt")
+        self.change_mail_settings_button.setStyleSheet("background-color: #f7ca18; color: black; min-width: 120px;")
+        self.change_mail_settings_button.clicked.connect(self.show_change_mail_settings_dialog)
+
+        self.software_install_button = QPushButton("Cài đặt phần mềm")
+        self.software_install_button.setStyleSheet("""
+            QPushButton {
+                background-color: #17a2b8;
+                color: white;
+                padding: 5px;
+                border: none;
+                border-radius: 3px;
+                min-width: 120px;
+            }
+            QPushButton:hover {
+                background-color: #138496;
+            }
+        """)
+        self.software_install_button.clicked.connect(self.show_software_install_dialog)
+         
+    
         action_layout.addWidget(file_output_label)
         action_layout.addWidget(self.change_mail_start_button)
         action_layout.addWidget(self.change_mail_stop_button)
         action_layout.addWidget(self.change_mail_export_button)
+        action_layout.addWidget(self.change_mail_settings_button)
+        action_layout.addWidget(self.software_install_button)
+
         action_layout.addStretch()
-        
         bottom_layout.addLayout(action_layout)
-        change_mail_layout.addLayout(bottom_layout)
+        layout.addLayout(bottom_layout)
+        
+    def show_software_install_dialog(self):
+        dialog = SoftwareInstallDialog(self)
+        dialog.exec_()
+
+    def browse_ld_path(self):
+        dir_path = QFileDialog.getExistingDirectory(self, "Chọn thư mục LDPlayer")
+        if dir_path:
+            self.ld_path_input.setText(dir_path)
 
     def toggle_email_format_input(self):
         self.email_format_input.setEnabled(self.custom_email_radio.isChecked())
@@ -786,31 +1092,78 @@ class MailToolApp(QMainWindow):
         # Show the menu at cursor position
         context_menu.exec_(QCursor.pos())
 
-    def add_mailnew_from_clipboard(self):
-        # Khởi tạo chỉ số nếu chưa có
-        if not hasattr(self, "mail_new_insert_index"):
-            self.mail_new_insert_index = 0
+    def show_change_mail_settings_dialog(self):
+        dialog = ChangeMailSettingsDialog(self)
+        # Nếu muốn load giá trị cũ thì setValue cho các spinbox ở đây
+        if dialog.exec_() == QDialog.Accepted:
+            # Lưu lại các giá trị cấu hình vào biến hoặc file config
+            cpu = dialog.cpu_spin.value()
+            ram = dialog.ram_spin.value()
+            dpi = dialog.dpi_spin.value()
+            width = dialog.width_spin.value()
+            height = dialog.height_spin.value()
+            # ... xử lý lưu hoặc cập nhật config LDPlayer nếu muốn
 
+    def open_ldplayer(self):
+        path = self.ld_path_input.text().strip()
+        print(f"Opening LDPlayer at path: {path}")
+        
+        try:
+            config_info = {
+                'path': path,
+                'thread': self.change_mail_thread_spin.value(),
+                'type': 'open_ldplayer',
+            }
+            with open('data.json', 'w', encoding='utf-8') as f:
+                json.dump(config_info, f, ensure_ascii=False, indent=4)
+            # Chạy thread mở LDPlayer
+            self.open_ldplayer_thread = WorkerThread(self.change_mail_thread_spin.value())
+            self.open_ldplayer_thread.show_error.connect(self.show_error_message)
+            self.open_ldplayer_thread.start()
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi", f"Không thể mở LDPlayer:\n{e}")
+
+    def show_error_message(self, message):
+        QMessageBox.critical(self, "Thông báo", message)
+
+    def add_mailnew_from_clipboard(self):
         copied_text = pyperclip.paste().strip()
         if not copied_text:
             QMessageBox.warning(self, "Thông báo", "Clipboard không có dữ liệu")
             return
 
+        # Reset mail_new_insert_index nếu đã thêm xong tất cả các dòng trước đó
+        if not hasattr(self, "mail_new_insert_index") or self.mail_new_insert_index >= self.change_mail_tree_widget.topLevelItemCount():
+            self.mail_new_insert_index = 0
+
         mail_new_list = [line.strip() for line in copied_text.splitlines() if line.strip()]
         total_items = self.change_mail_tree_widget.topLevelItemCount()
         inserted = 0
+
         try:
             for mail_new in mail_new_list:
                 if self.mail_new_insert_index >= total_items:
                     break  # Hết dòng, không thể thêm tiếp
+
                 item = self.change_mail_tree_widget.topLevelItem(self.mail_new_insert_index)
-                item.setText(6, mail_new)
-                item.setText(7, mail_new.split('|')[1])
-                self.mail_new_insert_index += 1
-                inserted += 1
-            QMessageBox.information(self, "Thành công", f"Đã thêm {inserted} MAIL MỚI.")
-        except:
-            QMessageBox.information(self, "Thất bại", f"Vui lòng nhập đúng định dạng mail mail|pass|token|client_id")
+                parts = mail_new.split('|')
+                if len(parts) >= 2:  # Kiểm tra định dạng mail|pass
+                    item.setText(6, mail_new)  # Mail mới
+                    item.setText(7, parts[1])  # Pass mail
+                    self.mail_new_insert_index += 1
+                    inserted += 1
+                
+            if inserted > 0:
+                QMessageBox.information(self, "Thành công", f"Đã thêm {inserted} MAIL MỚI.")
+            else:
+                QMessageBox.warning(self, "Thất bại", "Vui lòng nhập đúng định dạng mail|pass")
+
+            # Reset index nếu đã thêm hết
+            if self.mail_new_insert_index >= total_items:
+                self.mail_new_insert_index = 0
+
+        except Exception as e:
+            QMessageBox.warning(self, "Thất bại", f"Lỗi khi thêm mail mới: {str(e)}\nVui lòng nhập đúng định dạng mail|pass")
 
         
 
@@ -912,92 +1265,78 @@ class MailToolApp(QMainWindow):
         self.update_change_mail_counts()
 
     def start_change_mail_processing(self):
-        # Get all checked items from the tree widget
+        # Disable start button
+        self.change_mail_start_button.setEnabled(False)
+        self.change_mail_stop_button.setEnabled(True)
+
+        # Get settings from UI
+        num_threads = self.change_mail_thread_spin.value()
+
+        # Collect all items data
+        all_items = []
         checked_items = []
+
+        # First pass - check for checked items and missing emails
         for i in range(self.change_mail_tree_widget.topLevelItemCount()):
             item = self.change_mail_tree_widget.topLevelItem(i)
             checkbox = self.change_mail_tree_widget.itemWidget(item, 0)
             if checkbox and checkbox.isChecked():
-                item_data = {
-                    "index": i,
-                    "uid": item.text(2),
-                    "old_email": item.text(5),
-                    "new_email": item.text(6),
-                }
-                checked_items.append(item_data)
-        
-        # Check if any items are selected
-        if not checked_items:
-            QMessageBox.warning(self, "Cảnh báo", "Vui lòng chọn ít nhất một email để xử lý!")
-            return
-        
-        # Get configuration values
-        proxy_enabled = self.change_mail_proxy_check.isChecked()
-        proxy_type = self.change_mail_proxy_combo.currentText()
-        # mail_api = self.change_mail_api_combo.currentText()
-        # email_format = "random" if self.random_email_radio.isChecked() else "custom"
-        # custom_format = self.email_format_input.text() if self.custom_email_radio.isChecked() else ""
-        # domain = self.domain_combo.currentText()
-        num_threads = self.change_mail_thread_spin.value()
-        delay_time = self.delay_spin.value()
-        
-        # Validate inputs if using custom format
-        # if email_format == "custom" and not custom_format:
-        #     QMessageBox.warning(self, "Cảnh báo", "Vui lòng nhập định dạng email tùy chỉnh!")
-        #     return
-        
-        # Create a worker thread for changing emails
+                checked_items.append(item)
+                if not item.text(6).strip():  # Check for empty new_email
+                    self.change_mail_start_button.setEnabled(True)
+                    self.change_mail_stop_button.setEnabled(False)
+                    QMessageBox.warning(self, "Cảnh báo", "Vui lòng nhập Mail mới cho tất cả tài khoản đã chọn!")
+                    return False  # Return early if any checked item has empty email
+
+        # If we get here, all checked items have emails - now collect the data
+        for item in checked_items:
+            item_data = {
+                "selected": True,
+                "stt": item.text(1),
+                "uid": item.text(2),
+                "password": item.text(3),
+                "cookie": item.text(4),
+                "old_email": item.text(5),
+                "new_email": item.text(6),
+                "proxy": item.text(8),
+                "status": item.text(9)
+            }
+            all_items.append(item_data)
+
+        # Only proceed if we have items to process
+        if not all_items:
+            self.change_mail_start_button.setEnabled(True)
+            self.change_mail_stop_button.setEnabled(False)
+            QMessageBox.warning(self, "Cảnh báo", "Vui lòng chọn ít nhất một tài khoản để xử lý!")
+            return False
+
+        # Create configuration
+        config_info = {
+            'account': all_items,
+            'thread': num_threads,
+            'type': 'change_mail'
+        }
+
         self.change_mail_worker_thread = WorkerThread(
             num_threads
         )
-        
-        # Connect signals from worker thread
+
         self.change_mail_worker_thread.update_status.connect(self.update_change_mail_status)
         self.change_mail_worker_thread.update_counts.connect(self.update_change_mail_result_counts)
-        
-        # Update UI
-        self.change_mail_start_button.setEnabled(False)
-        self.change_mail_stop_button.setEnabled(True)
-        
-        # Collect all items data
-        all_items = []
-        for i in range(self.change_mail_tree_widget.topLevelItemCount()):
-            item = self.change_mail_tree_widget.topLevelItem(i)
-            checkbox = self.change_mail_tree_widget.itemWidget(item, 0)
-            if checkbox and checkbox.isChecked():
-                item_data = {
-                    "selected": True,
-                    "stt": item.text(1),
-                    "uid": item.text(2),
-                    "password": item.text(3),
-                    "cookie": item.text(4),
-                    "old_email": item.text(5),
-                    "new_email": item.text(6),
-                    "password": item.text(7),
-                    "proxy": item.text(8),
-                    "status": item.text(9)
-                }
-                all_items.append(item_data)
 
-        # Create configuration data
-        config_info = {
-            'account': all_items,
-            'proxy': f"{'yes' if proxy_enabled else 'no'} ({proxy_type if proxy_enabled else ''})",
-            # 'mail_api': mail_api,
-            # 'email_format': email_format,
-            # 'custom_format': custom_format,
-            # 'domain': domain,
-            'thread': num_threads,
-            'delay': delay_time,
-            'type': 'change_mail'
-        }
-        
         # Save configuration to file
-        with open('data.json', 'w', encoding='utf-8') as f:
-            json.dump(config_info, f, ensure_ascii=False, indent=4)
-            
+        try:
+            with open('data.json', 'w', encoding='utf-8') as f:
+                json.dump(config_info, f, ensure_ascii=False, indent=4)
+        except Exception as e:
+            self.change_mail_start_button.setEnabled(True)
+            self.change_mail_stop_button.setEnabled(False)
+            QMessageBox.critical(self, "Lỗi", f"Không thể lưu cấu hình: {str(e)}")
+            return False
+        
         # Start the worker thread
         self.change_mail_worker_thread.start()
+        return True
 
     def stop_change_mail_processing(self):
         if self.change_mail_worker_thread and self.change_mail_worker_thread.isRunning():
@@ -1009,23 +1348,24 @@ class MailToolApp(QMainWindow):
         self.change_mail_stop_button.setEnabled(False)
         QMessageBox.information(self, "Thông báo", "Đã dừng xử lý đổi mail!")
 
-    def update_change_mail_status(self, item_index, new_email, status, password):
+    def update_change_mail_status(self, item_index, new_pass, status, message):
         if 0 <= item_index < self.change_mail_tree_widget.topLevelItemCount():
             item = self.change_mail_tree_widget.topLevelItem(item_index)
-            # Only update new email if provided
-            # if new_email:
-            #     item.setText(5, new_email)
-            # # Update password and status
-            # item.setText(6, password)
-            item.setText(4, status)
             
-            # Update color based on status
-            if "thành công" in status.lower():
-                for col in range(4):
-                    item.setBackground(col, QColor("#90ee90"))  # Light green
+            # Cập nhật status với màu sắc tương ứng
+            item.setText(9, status)  # Cột STATUS là cột thứ 9
+            
+            # Set màu nền dựa vào kết quả
+            if "Thành công" in status:
+                color = QColor("#90EE90")  # Xanh lá nhạt
             else:
-                for col in range(4):
-                    item.setBackground(col, QColor("#ff9999"))  # Light red
+                color = QColor("#FFB6C1")  # Đỏ nhạt
+                
+            for col in range(item.columnCount()):
+                item.setBackground(col, color)
+            
+            # Tự động cuộn đến item vừa cập nhật
+            self.change_mail_tree_widget.scrollToItem(item)
 
     def update_change_mail_result_counts(self, success_count, fail_count):
         self.change_mail_success_label.setText(str(success_count))
@@ -1043,9 +1383,9 @@ class MailToolApp(QMainWindow):
                 password = item.text(3)
                 old_email = item.text(4)
                 new_email = item.text(5)
-                password = item.text(6)
+                stautus = item.text(9)
                 cookie = item.text(3)
-                line = f"{uid}|{old_email}|{new_email}|{password}|{cookie}"
+                line = f"{uid}|{old_email}|{new_email}|{password}|{cookie}|{stautus}"
                 selected_lines.append(line)
 
         if not selected_lines:
@@ -1596,6 +1936,24 @@ class MailToolApp(QMainWindow):
         key_info_layout.addWidget(copy_button)
         key_info_layout.addWidget(expiry_label)
         key_info_layout.addWidget(self.expiry_value_label)
+
+        self.update_btn = QPushButton("📢 Có gì mới?")
+        self.update_btn.setStyleSheet("""
+            QPushButton {
+                padding: 4px 15px;
+                background: #2ecc71;
+                color: white;
+                border: none;
+                border-radius: 3px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background: #27ae60;
+            }
+        """)
+        self.update_btn.clicked.connect(self.show_update_info)
+    
         
         # Right side - Support button with enhanced styling
         support_button = QPushButton("🔔 Hỗ trợ")
@@ -1627,9 +1985,39 @@ class MailToolApp(QMainWindow):
         footer_layout.addLayout(key_info_layout)
         footer_layout.addStretch()
         footer_layout.addWidget(auth_label)
+        footer_layout.addWidget(self.update_btn)
         footer_layout.addWidget(support_button)
         
         layout.addLayout(footer_layout)
+        self.check_updates()
+
+    
+    def check_updates(self):
+        try:
+            if os.path.exists('update_info.json'):
+                with open('update_info.json', 'r', encoding='utf-8') as f:
+                    update_info = json.load(f)
+                    if not update_info.get('is_read', False):
+                        self.show_update_info()
+        except Exception as e:
+            print(f"Error checking updates: {e}")
+
+    def show_update_info(self):
+        try:
+            with open('update_info.json', 'r', encoding='utf-8') as f:
+                update_info = json.load(f)
+                
+            dialog = UpdateDialog(update_info, self)
+            result = dialog.exec_()
+            
+            if result == QDialog.Accepted and dialog.dont_show.isChecked():
+                # Update is_read status
+                update_info['is_read'] = True
+                with open('update_info.json', 'w', encoding='utf-8') as f:
+                    json.dump(update_info, f, indent=4, ensure_ascii=False)
+                    
+        except Exception as e:
+            QMessageBox.warning(self, "Lỗi", f"Không thể đọc thông tin cập nhật: {str(e)}")
 
     def update_expiry_date(self):
         """Cập nhật ngày hết hạn từ server"""

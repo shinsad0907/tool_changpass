@@ -1,0 +1,23 @@
+{
+    "version": "1.0.0",
+    "last_update": "2024-06-05",
+    "changelog": [
+        {
+            "title": "🎉 Tính năng mới",
+            "items": [
+                "✨ Thêm tính năng đổi mail tự động",
+                "✨ Hỗ trợ nhiều định dạng mail hơn",
+                "✨ Tự động kiểm tra và cài đặt phần mềm cần thiết"
+            ]
+        },
+        {
+            "title": "🛠️ Cải tiến",
+            "items": [
+                "⚡ Tối ưu tốc độ xử lý",
+                "🎨 Giao diện đẹp và thân thiện hơn",
+                "🔧 Sửa các lỗi từ phiên bản trước"
+            ]
+        }
+    ],
+    "is_read": true
+}
