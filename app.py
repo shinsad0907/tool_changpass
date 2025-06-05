@@ -350,9 +350,9 @@ class ChangeMailSettingsDialog(QDialog):
         layout.addWidget(save_btn)
 
     def browse_ld_path(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Chọn file LDPlayer", "", "Executable (*.exe)")
-        if file_path:
-            self.ld_path_input.setText(file_path)
+        dir_path = QFileDialog.getExistingDirectory(self, "Chọn thư mục LDPlayer")
+        if dir_path:
+            self.ld_path_input.setText(dir_path)
 
     def browse_tess_path(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Chọn file pytesseract", "", "Executable (*.exe)")
@@ -928,7 +928,7 @@ class MailToolApp(QMainWindow):
         ld_layout = QHBoxLayout()
         ld_label = QLabel("Path LDPlayer:")
         self.ld_path_input = QLineEdit()
-        self.ld_path_input.setPlaceholderText("C:\\LDPlayer\\LDPlayer.exe")
+        self.ld_path_input.setPlaceholderText("C:\\LDPlayer\\LDPlayer9")
         ld_btn = QPushButton("...")
         ld_btn.setFixedWidth(30)
         ld_btn.clicked.connect(self.browse_ld_path)
