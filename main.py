@@ -15,6 +15,8 @@ class Main:
         self.index = index
         self.account = account
 
+        with open('data.json', 'r') as f:
+            data = json.load(f)
 
         def generate_smart_user_agent():
             # Phiên bản Chrome hợp lệ (đừng để quá thấp hoặc quá cao)
@@ -38,12 +40,40 @@ class Main:
         options = webdriver.ChromeOptions()
         # mobile_emulation = {"deviceName": "iPhone X"}
         # options.add_experimental_option("mobileEmulation", mobile_emulation)
+
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-software-rasterizer")
         options.add_argument("--window-size=375,812")
 
+        if 'yes' in data['proxy']:
+            proxy = self.account['proxy']
+            # Kiểm tra xem proxy có chứa username và password không
+            if '@' in proxy:
+                # Format: username:password@ip:port
+                auth, address = proxy.split('@')
+                username, password = auth.split(':')
+                ip, port = address.split(':')
+                
+                # Cấu hình proxy với authentication
+                options.add_argument(f'--proxy-server=http://{ip}:{port}')
+                # Thêm credentials cho proxy
+                capabilities = {
+                    'proxy': {
+                        'httpProxy': proxy,
+                        'sslProxy': proxy,
+                        'proxyType': 'MANUAL',
+                        'socksUsername': username,
+                        'socksPassword': password
+                    }
+                }
+                options.set_capability('proxy', capabilities['proxy'])
+            else:
+                # Proxy không có auth, format: ip:port
+                options.add_argument(f'--proxy-server=http://{proxy}')
+        else:
+            pass
         #options.add_argument(f"user-agent={generate_smart_user_agent()}")
 
         prefs = {"profile.default_content_setting_values.notifications": 2}
@@ -205,7 +235,7 @@ class Main:
                 pass
 
             self.add_cookie()
-            self.driver.get("https://accountscenter.facebook.com/personal_info/contact_points/?contact_point_type=email&dialog_type=add_contact_point")
+            self.driver.get("https://accountscenter.facebook.com/personal_info/cont act_points/?contact_point_type=email&dialog_type=add_contact_point")
             sleep(2)
             self.driver.get("https://accountscenter.facebook.com/personal_info/contact_points/?contact_point_type=email&dialog_type=add_contact_point")
             # Nhập email mới

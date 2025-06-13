@@ -1504,6 +1504,8 @@ class MailToolApp(QMainWindow):
         proxy_layout = QHBoxLayout()
         self.proxy_check = QCheckBox("Dùng Proxy:")
         self.proxy_check.setChecked(True)
+        # Trong setup_change_pass_tab
+        self.proxy_check.stateChanged.connect(self.on_proxy_check_changed)
         self.proxy_combo = QComboBox()
         self.proxy_combo.addItems(["Tmproxy.com", "ProxyV6", "911S5", "ShopLike"])
         proxy_layout.addWidget(self.proxy_check)
@@ -1630,41 +1632,50 @@ class MailToolApp(QMainWindow):
         self.worker_thread.update_counts.connect(self.update_login_counts)
         
         # Update UI
-        self.start_button.setEnabled(False)
-        self.stop_button.setEnabled(True)
+        
         
         # Display configuration in a dialog
         all_items = []
+        success_add_proxy = True
         for i in range(self.tree_widget.topLevelItemCount()):
             item = self.tree_widget.topLevelItem(i)
             checkbox = self.tree_widget.itemWidget(item, 0)
             if checkbox and checkbox.isChecked():  # chỉ xử lý nếu checked
-                item_data = {
-                    "selected": True,
-                    "stt": item.text(1),
-                    "uid": item.text(2),
-                    "cookie": item.text(3),
-                    "email": item.text(4),
-                    "password": item.text(5),
-                    "proxy": item.text(6),
-                    "code": item.text(7),
-                    "status": item.text(8)
-                }
-                
-                all_items.append(item_data)
+                if proxy_enabled:
+                    if item.text(6) == "":  # Kiểm tra nếu không có proxy
+                        QMessageBox.warning(self, "Cảnh báo", "Vui lòng nhập Proxy cho tất cả tài khoản đã chọn!")
+                        success_add_proxy = False
+                        return
+                    else:
+                        item_data = {
+                            "selected": True,
+                            "stt": item.text(1),
+                            "uid": item.text(2),
+                            "cookie": item.text(3),
+                            "email": item.text(4),
+                            "password": item.text(5),
+                            "proxy": item.text(6),
+                            "code": item.text(7),
+                            "status": item.text(8)
+                        }
+                        
+                        all_items.append(item_data)
 
-        config_info = {
-            'account': all_items,
-            'proxy': f"{'yes' if proxy_enabled else 'no'} ({proxy_type if proxy_enabled else ''})",
-            'type_password': password,
-            'password': password_input if password_mode == "Tự nhập" else "********",
-            'thread': num_threads,
-            'type': 'change_pass'
-        }
-        with open('data.json', 'w', encoding='utf-8') as f:
-            json.dump(config_info, f, ensure_ascii=False, indent=4)
-        # Start the worker thread
-        self.worker_thread.start()
+        if success_add_proxy:
+            self.start_button.setEnabled(False)
+            self.stop_button.setEnabled(True)
+            config_info = {
+                'account': all_items,
+                'proxy': f"{'yes' if proxy_enabled else 'no'} ({proxy_type if proxy_enabled else ''})",
+                'type_password': password,
+                'password': password_input if password_mode == "Tự nhập" else "********",
+                'thread': num_threads,
+                'type': 'change_pass'
+            }
+            with open('data.json', 'w', encoding='utf-8') as f:
+                json.dump(config_info, f, ensure_ascii=False, indent=4)
+            # Start the worker thread
+            self.worker_thread.start()
     
     def stop_processing(self):
         if self.worker_thread and self.worker_thread.isRunning():
@@ -1725,7 +1736,7 @@ class MailToolApp(QMainWindow):
         deselect_all_action = QAction("Bỏ chọn tất cả", self)
         deselect_all_action.setIcon(QIcon.fromTheme("edit-clear"))
         
-        select_errors_action = QAction("Chọn tài khoản lỗi", self)
+        select_errors_action = QAction("Chọn tài khoản bôi đen", self)
         select_errors_action.setIcon(QIcon.fromTheme("edit-select"))
         
         delete_mail_action = QAction("Xóa mail", self)
@@ -1851,10 +1862,67 @@ class MailToolApp(QMainWindow):
         self.selection_label.setText(f"Đã chọn: {selected_count}")
         
     def add_proxy(self):
-        print("Add proxy action triggered")
-        QMessageBox.information(self, "Thông báo", "Chức năng thêm proxy sẽ được phát triển trong phiên bản tiếp theo!")
+        # Lấy nội dung từ clipboard 
+        copied_text = pyperclip.paste().strip()
+        if not copied_text:
+            QMessageBox.warning(self, "Cảnh báo", "Clipboard trống!")
+            return
+
+        # Lấy danh sách proxy từ clipboard
+        proxy_list = [line.strip() for line in copied_text.split('\n') if line.strip()]
+        
+        if not proxy_list:
+            QMessageBox.warning(self, "Cảnh báo", "Không tìm thấy proxy hợp lệ!")
+            return
+
+        # Lấy số lượng item trong tree widget
+        total_items = self.tree_widget.topLevelItemCount()
+        if total_items == 0:
+            QMessageBox.warning(self, "Cảnh báo", "Vui lòng thêm tài khoản trước khi thêm proxy!")
+            return
+
+        # Reset proxy_index nếu chưa có hoặc đã hết danh sách trước đó
+        if not hasattr(self, "proxy_index") or self.proxy_index >= total_items:
+            self.proxy_index = 0
+
+        proxy_count = 0
+        current_proxy_index = 0
+
+        # Thêm proxy vào các item đã chọn
+        for i in range(total_items):
+            item = self.tree_widget.topLevelItem(i)
+            checkbox = self.tree_widget.itemWidget(item, 0)
+            
+            if checkbox and checkbox.isChecked():
+                # Lấy proxy theo vòng lặp
+                proxy = proxy_list[current_proxy_index]
+                current_proxy_index = (current_proxy_index + 1) % len(proxy_list)
+                
+                # Cập nhật proxy vào cột thứ 6 (PROXY)
+                item.setText(6, proxy)
+                proxy_count += 1
+
+        if proxy_count > 0:
+            # Cập nhật label số lượng proxy
+            self.total_proxy_label.setText(str(len(proxy_list)))
+            QMessageBox.information(self, "Thành công", f"Đã thêm proxy cho {proxy_count} tài khoản!")
+        else:
+            QMessageBox.warning(self, "Cảnh báo", "Vui lòng chọn ít nhất một tài khoản để thêm proxy!")
         
     def select_all(self):
+        # Kiểm tra xem có proxy hay không trước khi cho phép tick
+        has_proxy = False
+        for i in range(self.tree_widget.topLevelItemCount()):
+            item = self.tree_widget.topLevelItem(i)
+            if item.text(6).strip():  # Kiểm tra cột PROXY (cột 6) có dữ liệu không
+                has_proxy = True
+                break
+        
+        if not has_proxy and self.proxy_check.isChecked():
+            QMessageBox.warning(self, "Cảnh báo", "Vui lòng thêm proxy trước khi chọn tài khoản!")
+            return
+            
+        # Nếu có proxy hoặc không dùng proxy thì cho phép tick
         for i in range(self.tree_widget.topLevelItemCount()):
             item = self.tree_widget.topLevelItem(i)
             checkbox = self.tree_widget.itemWidget(item, 0)
@@ -1869,11 +1937,43 @@ class MailToolApp(QMainWindow):
         self.update_counts()
             
     def select_errors(self):
-        # Select items with "Đăng nhập thất bại" status
+        # Kiểm tra proxy trước khi cho phép tick
+        has_proxy = False
         for i in range(self.tree_widget.topLevelItemCount()):
             item = self.tree_widget.topLevelItem(i)
-            if "thất bại" in item.text(7).lower():
-                self.tree_widget.setCurrentItem(item)
+            if item.text(6).strip():  # Kiểm tra cột PROXY
+                has_proxy = True
+                break
+                
+        if not has_proxy and self.proxy_check.isChecked():
+            QMessageBox.warning(self, "Cảnh báo", "Vui lòng thêm proxy trước khi chọn tài khoản!")
+            return
+
+        # Nếu có proxy hoặc không dùng proxy thì cho phép tick các item được bôi đen
+        for i in range(self.tree_widget.topLevelItemCount()):
+            item = self.tree_widget.topLevelItem(i)
+            checkbox = self.tree_widget.itemWidget(item, 0)
+            
+            if item.isSelected():
+                if checkbox:
+                    checkbox.setChecked(True)
+        
+        self.update_counts()
+    
+    def on_proxy_check_changed(self, state):
+        # Thêm hàm xử lý khi tick vào checkbox Dùng Proxy
+        if state == Qt.Checked:
+            # Kiểm tra xem có proxy nào trong tree không
+            has_proxy = False
+            for i in range(self.tree_widget.topLevelItemCount()):
+                item = self.tree_widget.topLevelItem(i)
+                if item.text(6).strip():  # Kiểm tra cột PROXY
+                    has_proxy = True
+                    break
+                    
+            if not has_proxy:
+                QMessageBox.warning(self, "Cảnh báo", "Vui lòng thêm proxy trước khi bật chế độ dùng proxy!")
+                self.proxy_check.setChecked(False)
                 
     def delete_mail(self):
         # Get selected items
