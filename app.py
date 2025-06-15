@@ -1630,19 +1630,17 @@ class MailToolApp(QMainWindow):
         # Connect signals from worker thread
         self.worker_thread.update_status.connect(self.update_item_status)
         self.worker_thread.update_counts.connect(self.update_login_counts)
-
+        
+        # Update UI
+        self.start_button.setEnabled(False)
+        self.stop_button.setEnabled(True)
+        
+        # Display configuration in a dialog
         all_items = []
-        success_add_proxy = True
         for i in range(self.tree_widget.topLevelItemCount()):
             item = self.tree_widget.topLevelItem(i)
             checkbox = self.tree_widget.itemWidget(item, 0)
             if checkbox and checkbox.isChecked():  # chỉ xử lý nếu checked
-                if proxy_enabled and item.text(6) == "":  # Kiểm tra proxy nếu enabled
-                    QMessageBox.warning(self, "Cảnh báo", "Vui lòng nhập Proxy cho tất cả tài khoản đã chọn!")
-                    success_add_proxy = False
-                    return
-                
-                # Add item data regardless of proxy status
                 item_data = {
                     "selected": True,
                     "stt": item.text(1),
@@ -1654,23 +1652,21 @@ class MailToolApp(QMainWindow):
                     "code": item.text(7),
                     "status": item.text(8)
                 }
-        all_items.append(item_data)
+                
+                all_items.append(item_data)
 
-        if success_add_proxy:
-            self.start_button.setEnabled(False)
-            self.stop_button.setEnabled(True)
-            config_info = {
-                'account': all_items,
-                'proxy': f"{'yes' if proxy_enabled else 'no'} ({proxy_type if proxy_enabled else ''})",
-                'type_password': password,
-                'password': password_input if password_mode == "Tự nhập" else "********",
-                'thread': num_threads,
-                'type': 'change_pass'
-            }
-            with open('data.json', 'w', encoding='utf-8') as f:
-                json.dump(config_info, f, ensure_ascii=False, indent=4)
-            # Start the worker thread
-            self.worker_thread.start()
+        config_info = {
+            'account': all_items,
+            'proxy': f"{'yes' if proxy_enabled else 'no'} ({proxy_type if proxy_enabled else ''})",
+            'type_password': password,
+            'password': password_input if password_mode == "Tự nhập" else "********",
+            'thread': num_threads,
+            'type': 'change_pass'
+        }
+        with open('data.json', 'w', encoding='utf-8') as f:
+            json.dump(config_info, f, ensure_ascii=False, indent=4)
+        # Start the worker thread
+        self.worker_thread.start()
     
     def stop_processing(self):
         if self.worker_thread and self.worker_thread.isRunning():
