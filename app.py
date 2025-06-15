@@ -1630,36 +1630,31 @@ class MailToolApp(QMainWindow):
         # Connect signals from worker thread
         self.worker_thread.update_status.connect(self.update_item_status)
         self.worker_thread.update_counts.connect(self.update_login_counts)
-        
-        # Update UI
-        
-        
-        # Display configuration in a dialog
+
         all_items = []
         success_add_proxy = True
         for i in range(self.tree_widget.topLevelItemCount()):
             item = self.tree_widget.topLevelItem(i)
             checkbox = self.tree_widget.itemWidget(item, 0)
             if checkbox and checkbox.isChecked():  # chỉ xử lý nếu checked
-                if proxy_enabled:
-                    if item.text(6) == "":  # Kiểm tra nếu không có proxy
-                        QMessageBox.warning(self, "Cảnh báo", "Vui lòng nhập Proxy cho tất cả tài khoản đã chọn!")
-                        success_add_proxy = False
-                        return
-                    else:
-                        item_data = {
-                            "selected": True,
-                            "stt": item.text(1),
-                            "uid": item.text(2),
-                            "cookie": item.text(3),
-                            "email": item.text(4),
-                            "password": item.text(5),
-                            "proxy": item.text(6),
-                            "code": item.text(7),
-                            "status": item.text(8)
-                        }
-                        
-                        all_items.append(item_data)
+                if proxy_enabled and item.text(6) == "":  # Kiểm tra proxy nếu enabled
+                    QMessageBox.warning(self, "Cảnh báo", "Vui lòng nhập Proxy cho tất cả tài khoản đã chọn!")
+                    success_add_proxy = False
+                    return
+                
+                # Add item data regardless of proxy status
+                item_data = {
+                    "selected": True,
+                    "stt": item.text(1),
+                    "uid": item.text(2),
+                    "cookie": item.text(3),
+                    "email": item.text(4),
+                    "password": item.text(5),
+                    "proxy": item.text(6),
+                    "code": item.text(7),
+                    "status": item.text(8)
+                }
+        all_items.append(item_data)
 
         if success_add_proxy:
             self.start_button.setEnabled(False)

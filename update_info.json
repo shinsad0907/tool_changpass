@@ -1,17 +1,18 @@
 {
-    "version": "1.0.19",
-    "last_update": "2024-06-14",
+    "version": "1.0.20",
+    "last_update": "2024-06-15",
     "changelog": [
+        {
+            "title": "🛠️ Cải tiến",
+            "items": [
+                "⚡ Sửa lỗi chức năng Start không hoạt động khi tắt Proxy",
+                "⚡ Sửa đổi tính năng chọn tài khoản lỗi thành chọn tài khoản bôi đen"
+            ]
+        },
         {
             "title": "🎉 Tính năng mới",
             "items": [
                 "✨ Thêm tính năng add proxy"
-            ]
-        },
-        {
-            "title": "🛠️ Cải tiến",
-            "items": [
-                "⚡ Sửa đổi tính năng chọn tài khoản lỗi thành chọn tài khoản bôi đen"
             ]
         }
     ],
