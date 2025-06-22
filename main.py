@@ -55,14 +55,11 @@ class Main:
         self.driver.set_window_position(x, y)
 
     def wait_and_click(self, xpath, timeout=60):
-        try:
-            element = WebDriverWait(self.driver, timeout).until(
-                EC.element_to_be_clickable((By.XPATH, xpath))
-            )
-            element.click()
-            sleep(1.5)
-        except Exception as e:
-            print(f"Không tìm thấy hoặc không thể click element: {xpath} - {e}")
+        element = WebDriverWait(self.driver, timeout).until(
+            EC.element_to_be_clickable((By.XPATH, xpath))
+        )
+        element.click()
+        sleep(1.5)
 
     def wait_and_send_keys(self, xpath, keys, timeout=60):
         def human_typing(element, text, delay_range=(0.1, 0.3)):
@@ -181,7 +178,6 @@ class Main:
             # self.wait_and_click("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[3]/div/div[1]/button")
             self.wait_and_send_keys("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[2]/div[2]/div[1]/div/input", self.generated_pass)
             self.wait_and_click("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[3]/div/div[1]/button")
-            # self.wait_and_click("/html/body/div[1]/div/div/div/div/div/div/div[2]/div/div/div/div/div/div/div/div[3]/div/div/div[1]/div/div/div/div/div")
             sleep(20)
             cookies = self.get_cookies()
             self.driver.quit()
