@@ -55,11 +55,14 @@ class Main:
         self.driver.set_window_position(x, y)
 
     def wait_and_click(self, xpath, timeout=60):
-        element = WebDriverWait(self.driver, timeout).until(
-            EC.element_to_be_clickable((By.XPATH, xpath))
-        )
-        element.click()
-        sleep(1.5)
+        try:
+            element = WebDriverWait(self.driver, timeout).until(
+                EC.element_to_be_clickable((By.XPATH, xpath))
+            )
+            element.click()
+            sleep(1.5)
+        except Exception as e:
+            print(f"Không tìm thấy hoặc không thể click element: {xpath} - {e}")
 
     def wait_and_send_keys(self, xpath, keys, timeout=60):
         def human_typing(element, text, delay_range=(0.1, 0.3)):
