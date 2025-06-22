@@ -5,6 +5,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.edge.options import Options
+
 import random
 import string
 import requests
@@ -15,21 +17,31 @@ class Main:
         self.index = index
         self.account = account
 
-        options = webdriver.ChromeOptions()
-        # mobile_emulation = {"deviceName": "iPhone X"}
-        # options.add_experimental_option("mobileEmulation", mobile_emulation)
+
+        options = Options()
+        options.use_chromium = True  # Bắt buộc để dùng Chromium-based Edge
+
+        # Các tùy chọn như Chrome
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-software-rasterizer")
+        options.add_argument("--disable-infobars")
+        options.add_argument("--start-maximized")
         options.add_argument("--window-size=375,812")
 
-        #options.add_argument(f"user-agent={generate_smart_user_agent()}")
+        # Fake User-Agent
+        options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36")
 
-        prefs = {"profile.default_content_setting_values.notifications": 2}
+        prefs = {
+            "profile.default_content_setting_values.notifications": 2,
+            "credentials_enable_service": False,
+            "profile.password_manager_enabled": False
+        }
         options.add_experimental_option("prefs", prefs)
 
-        self.driver = webdriver.Chrome(options=options)
+        self.driver = webdriver.Edge(options=options)
+
 
         # Set vị trí cửa sổ
         SCREEN_WIDTH = 1920
@@ -152,20 +164,21 @@ class Main:
         )
         self.driver.get("https://m.facebook.com/login/identify/")
         try:
+            # self.driver.get("https://m.facebook.com/login/identify/")
             self.driver.get(f"https://www.facebook.com/recover/password/?u={self.account['uid']}&n={self.account['code']}&fl=default_recover&sih=0&msgr=0")
             try:
                 self.wait_and_click("/html/body/div[3]/div[2]/div/div/div/div/div[3]/div[2]/div/div[2]/div[1]/div")
             except:
                 pass
-            # self.wait_and_click("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[2]/div/div/div[2]/div/div[2]/div/div/div/div/div/div")
-            # self.wait_and_send_keys("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[2]/div/div/div[1]/div/div/div[2]/div[2]/input", self.account['email'])
-            # self.wait_and_click("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[2]/div/div/div[2]/div/div[1]/div/div/div/div/div/div")
-            # self.wait_and_send_keys("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[3]/div/div/div[1]/div/div/div[2]/div[2]/input", self.account['code'])
-            # self.wait_and_click("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[3]/div/div/div[3]/div/div[1]/div/div/div/div/div/div")
-            # self.wait_and_send_keys("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[2]/div/div/div/div/div[2]/div[2]/input", self.generated_pass)
-            # self.wait_and_click("/html/body/div[1]/div/div[2]/div[1]/div/div/div/div/div/div[1]/div/div/div/div[3]/div/div/div/div/div[3]/div/div/div/div[1]/div/div/div/div/div/div")
+            # self.wait_and_send_keys("/html/body/div[1]/div[1]/div[1]/div/div[2]/div/div/form/div/div[2]/div/table/tbody/tr[2]/td[2]/input", self.account['email'])
+            # self.wait_and_click("/html/body/div[1]/div[1]/div[1]/div/div[2]/div/div/form/div/div[3]/div/div[1]/button")
+            # self.driver.get("https://www.facebook.com/recover/initiate/?is_from_lara_screen=1")
+            # self.wait_and_click("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[3]/div/div[1]/button")
+            # self.wait_and_send_keys("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[2]/div[3]/div[1]/input", self.account['code'])
+            # self.wait_and_click("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[3]/div/div[1]/button")
             self.wait_and_send_keys("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[2]/div[2]/div[1]/div/input", self.generated_pass)
             self.wait_and_click("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[3]/div/div[1]/button")
+            self.wait_and_click("/html/body/div[1]/div/div/div/div/div/div/div[2]/div/div/div/div/div/div/div/div[3]/div/div/div[1]/div/div/div/div/div")
             sleep(20)
             cookies = self.get_cookies()
             self.driver.quit()
