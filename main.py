@@ -6,7 +6,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.edge.options import Options
-
 import random
 import string
 import requests
@@ -19,7 +18,6 @@ class Main:
 
 
         options = Options()
-        options.use_chromium = True  # Bắt buộc để dùng Chromium-based Edge
 
         # Các tùy chọn như Chrome
         options.add_argument("--disable-blink-features=AutomationControlled")
@@ -40,7 +38,7 @@ class Main:
         }
         options.add_experimental_option("prefs", prefs)
 
-        self.driver = webdriver.Edge(options=options)
+        self.driver = webdriver.Chrome(options=options)
 
 
         # Set vị trí cửa sổ
