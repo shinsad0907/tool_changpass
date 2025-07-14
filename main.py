@@ -165,7 +165,7 @@ class Main:
             # self.driver.get("https://m.facebook.com/login/identify/")
             self.driver.get(f"https://www.facebook.com/recover/password/?u={self.account['uid']}&n={self.account['code']}&fl=default_recover&sih=0&msgr=0")
             try:
-                self.wait_and_click("/html/body/div[3]/div[2]/div/div/div/div/div[3]/div[2]/div/div[2]/div[1]/div")
+                self.wait_and_click("/dyhtml/bo/div[3]/div/div/div/div/div/div[3]/div[2]/div/div[2]/div[1]/div")
             except:
                 pass
             # self.wait_and_send_keys("/html/body/div[1]/div[1]/div[1]/div/div[2]/div/div/form/div/div[2]/div/table/tbody/tr[2]/td[2]/input", self.account['email'])
