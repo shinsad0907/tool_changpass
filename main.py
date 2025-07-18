@@ -5,8 +5,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver import Edge
-from selenium.webdriver.edge.options import Options  # dùng Options cho Edge
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver import Chrome
 import random
 import string
 import requests
@@ -38,7 +38,7 @@ class Main:
             "profile.password_manager_enabled": False
         }
         options.add_experimental_option("prefs", prefs)
-        self.driver = Edge(options=options)
+        self.driver = Chrome(options=options)
         
 
 
