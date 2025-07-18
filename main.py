@@ -5,7 +5,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver import Edge
+from selenium.webdriver.edge.options import Options  # dùng Options cho Edge
 import random
 import string
 import requests
@@ -16,10 +17,9 @@ class Main:
         self.index = index
         self.account = account
 
-
         options = Options()
 
-        # Các tùy chọn như Chrome
+        # Các tùy chọn cho Edge
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
@@ -27,6 +27,7 @@ class Main:
         options.add_argument("--disable-infobars")
         options.add_argument("--start-maximized")
         options.add_argument("--window-size=375,812")
+
 
         # Fake User-Agent
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36")
@@ -37,8 +38,9 @@ class Main:
             "profile.password_manager_enabled": False
         }
         options.add_experimental_option("prefs", prefs)
+        self.driver = Edge(options=options)
+        
 
-        self.driver = webdriver.Chrome(options=options)
 
 
         # Set vị trí cửa sổ
