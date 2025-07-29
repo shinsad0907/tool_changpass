@@ -7,6 +7,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver import Chrome
+from selenium.webdriver.edge.options import Options
+from selenium.webdriver.edge.service import Service  # <== quan trọng
 import random
 import string
 import requests
@@ -16,6 +18,8 @@ class Main:
     def __init__(self, account, index=0):
         self.index = index
         self.account = account
+        with open('data.json', 'r') as f:
+            data = json.load(f)
 
         options = Options()
 
@@ -38,10 +42,12 @@ class Main:
             "profile.password_manager_enabled": False
         }
         options.add_experimental_option("prefs", prefs)
-        self.driver = Chrome(options=options)
-        
 
-
+        if data['browser']['type'] == 'chrome':
+            self.driver = Chrome(options=options)
+        else:
+            service = Service(executable_path=data['browser']['edge_driver_path'])
+            self.driver = webdriver.Edge(service=service, options=options)
 
         # Set vị trí cửa sổ
         SCREEN_WIDTH = 1920

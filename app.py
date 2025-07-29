@@ -775,7 +775,11 @@ class MailToolApp(QMainWindow):
             'account': all_items,
             'proxy': f"{'yes' if proxy_enabled else 'no'} ({proxy_type if proxy_enabled else ''})",
             'thread': num_threads,
-            'type': 'forgot_pass'
+            'type': 'forgot_pass',
+            "browser": {
+                "type": "chrome",
+                "edge_driver_path": ""
+            }
         }
 
         # Save config
@@ -1519,6 +1523,61 @@ class MailToolApp(QMainWindow):
         # self.friend_check.setChecked(True)
         # friend_layout.addWidget(self.friend_check)
         # settings_layout.addLayout(friend_layout)
+
+        # Browser selection
+        browser_group = QGroupBox("Trình duyệt")
+        browser_layout = QVBoxLayout(browser_group)
+
+        # Radio buttons for browser selection
+        browser_radio_layout = QHBoxLayout()
+        self.chrome_radio = QRadioButton("Chrome")
+        self.edge_radio = QRadioButton("Edge")
+        self.chrome_radio.setChecked(True)  # Default to Chrome
+        browser_radio_layout.addWidget(self.chrome_radio)
+        browser_radio_layout.addWidget(self.edge_radio)
+        browser_layout.addLayout(browser_radio_layout)
+
+        # Edge driver path input
+        edge_path_layout = QHBoxLayout()
+        edge_path_label = QLabel("MSEdgeDriver path:")
+        self.edge_path_input = QLineEdit()
+        self.edge_path_input.setPlaceholderText("C:\\Path\\To\\msedgedriver.exe")
+        self.edge_path_input.setEnabled(False)  # Disabled by default
+        edge_browse_btn = QPushButton("...")
+        edge_browse_btn.setFixedWidth(30)
+        edge_browse_btn.setEnabled(False)  # Disabled by default
+
+        edge_path_layout.addWidget(edge_path_label)
+        edge_path_layout.addWidget(self.edge_path_input)
+        edge_path_layout.addWidget(edge_browse_btn)
+        browser_layout.addLayout(edge_path_layout)
+
+        # Connect radio buttons to handler
+        def on_browser_changed():
+            is_edge = self.edge_radio.isChecked()
+            self.edge_path_input.setEnabled(is_edge)
+            edge_browse_btn.setEnabled(is_edge)
+            if not is_edge:
+                self.edge_path_input.clear()
+
+        self.chrome_radio.toggled.connect(on_browser_changed)
+        self.edge_radio.toggled.connect(on_browser_changed)
+
+        # Connect browse button
+        def browse_edge_driver():
+            file_path, _ = QFileDialog.getOpenFileName(
+                self,
+                "Select MSEdgeDriver",
+                "",
+                "Executable (*.exe)"
+            )
+            if file_path:
+                self.edge_path_input.setText(file_path)
+
+        edge_browse_btn.clicked.connect(browse_edge_driver)
+
+        # Add browser group to settings
+        settings_layout.addWidget(browser_group)
         
         # Password options
         pass_layout = QHBoxLayout()
@@ -1547,6 +1606,7 @@ class MailToolApp(QMainWindow):
         # mail_api_layout.addWidget(self.mail_api_combo)
         # settings_layout.addLayout(mail_api_layout)
         
+
         # Thread configuration
         thread_layout = QHBoxLayout()
         thread_label = QLabel("Số luồng:")
@@ -1656,14 +1716,32 @@ class MailToolApp(QMainWindow):
                 
                 all_items.append(item_data)
 
+        # Thêm vào trong hàm start_processing(), trước phần tạo config_info
+        # Sau khi lấy các giá trị cấu hình khác
+
+        # Get browser configuration
+        browser_type = "chrome" if self.chrome_radio.isChecked() else "edge"
+        edge_driver_path = self.edge_path_input.text() if self.edge_radio.isChecked() else ""
+
+        # Validate Edge driver path if Edge is selected
+        if browser_type == "edge" and not edge_driver_path:
+            QMessageBox.warning(self, "Cảnh báo", "Vui lòng chọn đường dẫn MSEdgeDriver!")
+            return
+
+        # Thêm vào config_info
         config_info = {
             'account': all_items,
             'proxy': f"{'yes' if proxy_enabled else 'no'} ({proxy_type if proxy_enabled else ''})",
             'type_password': password,
             'password': password_input if password_mode == "Tự nhập" else "********",
             'thread': num_threads,
-            'type': 'change_pass'
+            'type': 'change_pass',
+            'browser': {
+                'type': browser_type,
+                'edge_driver_path': edge_driver_path
+            }
         }
+        print("Cấu hình:", config_info)
         with open('data.json', 'w', encoding='utf-8') as f:
             json.dump(config_info, f, ensure_ascii=False, indent=4)
         # Start the worker thread
