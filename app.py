@@ -526,6 +526,60 @@ class MailToolApp(QMainWindow):
         proxy_layout.addWidget(self.forgot_pass_proxy_check)
         proxy_layout.addWidget(self.forgot_pass_proxy_combo)
         settings_layout.addLayout(proxy_layout)
+
+        browser_group = QGroupBox("Trình duyệt")
+        browser_layout = QVBoxLayout(browser_group)
+
+        # Radio buttons for browser selection
+        browser_radio_layout = QHBoxLayout()
+        self.forgot_pass_chrome_radio = QRadioButton("Chrome")
+        self.forgot_pass_edge_radio = QRadioButton("Edge")
+        self.forgot_pass_chrome_radio.setChecked(True)  # Default to Chrome
+        browser_radio_layout.addWidget(self.forgot_pass_chrome_radio)
+        browser_radio_layout.addWidget(self.forgot_pass_edge_radio)
+        browser_layout.addLayout(browser_radio_layout)
+
+        # Edge driver path input
+        edge_path_layout = QHBoxLayout()
+        edge_path_label = QLabel("MSEdgeDriver path:")
+        self.forgot_pass_edge_path_input = QLineEdit()
+        self.forgot_pass_edge_path_input.setPlaceholderText("C:\\Path\\To\\msedgedriver.exe")
+        self.forgot_pass_edge_path_input.setEnabled(False)  # Disabled by default
+        edge_browse_btn = QPushButton("...")
+        edge_browse_btn.setFixedWidth(30)
+        edge_browse_btn.setEnabled(False)  # Disabled by default
+
+        edge_path_layout.addWidget(edge_path_label)
+        edge_path_layout.addWidget(self.forgot_pass_edge_path_input)
+        edge_path_layout.addWidget(edge_browse_btn)
+        browser_layout.addLayout(edge_path_layout)
+
+        # Connect radio buttons to handler
+        def on_browser_changed():
+            is_edge = self.forgot_pass_edge_radio.isChecked()
+            self.forgot_pass_edge_path_input.setEnabled(is_edge)
+            edge_browse_btn.setEnabled(is_edge)
+            if not is_edge:
+                self.forgot_pass_edge_path_input.clear()
+
+        self.forgot_pass_chrome_radio.toggled.connect(on_browser_changed)
+        self.forgot_pass_edge_radio.toggled.connect(on_browser_changed)
+
+        # Connect browse button
+        def browse_edge_driver():
+            file_path, _ = QFileDialog.getOpenFileName(
+                self,
+                "Select MSEdgeDriver",
+                "",
+                "Executable (*.exe)"
+            )
+            if file_path:
+                self.forgot_pass_edge_path_input.setText(file_path)
+
+        edge_browse_btn.clicked.connect(browse_edge_driver)
+
+        # Add browser group to settings
+        settings_layout.addWidget(browser_group)
         
         # # Password configuration
         # pass_layout = QHBoxLayout()
@@ -770,15 +824,27 @@ class MailToolApp(QMainWindow):
                 }
                 all_items.append(item_data)
 
-        # Create config
+        # Thêm vào trong hàm start_forgot_pass_processing()
+        # Trước khi tạo config_info:
+
+        # Get browser configuration
+        browser_type = "chrome" if self.forgot_pass_chrome_radio.isChecked() else "edge"
+        edge_driver_path = self.forgot_pass_edge_path_input.text() if self.forgot_pass_edge_radio.isChecked() else ""
+
+        # Validate Edge driver path if Edge is selected
+        if browser_type == "edge" and not edge_driver_path:
+            QMessageBox.warning(self, "Cảnh báo", "Vui lòng chọn đường dẫn MSEdgeDriver!")
+            return
+
+        # Modify config_info to include browser settings
         config_info = {
             'account': all_items,
             'proxy': f"{'yes' if proxy_enabled else 'no'} ({proxy_type if proxy_enabled else ''})",
             'thread': num_threads,
             'type': 'forgot_pass',
-            "browser": {
-                "type": "chrome",
-                "edge_driver_path": ""
+            'browser': {
+                'type': browser_type,
+                'edge_driver_path': edge_driver_path
             }
         }
 
