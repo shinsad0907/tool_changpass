@@ -7,8 +7,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver import Chrome
-from selenium.webdriver.edge.options import Options
-from selenium.webdriver.edge.service import Service  # <== quan trọng
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.edge.options import Options as EdgeOptions
+from selenium.webdriver.edge.service import Service
 import random
 import string
 import requests
@@ -20,9 +21,10 @@ class Main:
         self.account = account
         with open('data.json', 'r') as f:
             data = json.load(f)
-
-        options = Options()
-
+        if data['browser']['type'] == 'chrome':
+            options = ChromeOptions()
+        else:
+            options = EdgeOptions()
         # Các tùy chọn cho Edge
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_argument("--disable-gpu")
