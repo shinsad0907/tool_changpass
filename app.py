@@ -1684,6 +1684,20 @@ class MailToolApp(QMainWindow):
         settings_layout.addLayout(thread_layout)
         
         bottom_layout.addWidget(settings_group)
+        # Sleep configuration 
+        sleep_layout = QHBoxLayout()
+        sleep_label = QLabel("Sleep (giây):")
+        self.sleep_spin = QSpinBox()
+        self.sleep_spin.setValue(3)
+        self.sleep_spin.setRange(1, 30)
+        sleep_layout.addWidget(sleep_label)
+        sleep_layout.addWidget(self.sleep_spin)
+        settings_layout.addLayout(sleep_layout)
+
+        # # Auto close driver checkbox
+        # self.close_driver_check = QCheckBox("Tự động tắt Driver")
+        # self.close_driver_check.setChecked(True)
+        # settings_layout.addWidget(self.close_driver_check)
         
         # Add file output and action buttons
         action_layout = QVBoxLayout()
@@ -1795,6 +1809,8 @@ class MailToolApp(QMainWindow):
             return
 
         # Thêm vào config_info
+        # Trong hàm start_processing(), thêm vào phần config_info:
+
         config_info = {
             'account': all_items,
             'proxy': f"{'yes' if proxy_enabled else 'no'} ({proxy_type if proxy_enabled else ''})",
@@ -1805,7 +1821,9 @@ class MailToolApp(QMainWindow):
             'browser': {
                 'type': browser_type,
                 'edge_driver_path': edge_driver_path
-            }
+            },
+            'sleep': self.sleep_spin.value(),  # Thêm thông số sleep
+            # 'close_driver': self.close_driver_check.isChecked()  # Thêm trạng thái tự động tắt driver
         }
         print("Cấu hình:", config_info)
         with open('data.json', 'w', encoding='utf-8') as f:

@@ -188,6 +188,7 @@ class Main:
             self.wait_and_click("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[3]/div/div[1]/button")
             sleep(20)
             cookies = self.get_cookies()
+            sleep(data['sleep'])
             self.driver.quit()
             return True, self.generated_pass, cookies
         except Exception as e:
