@@ -62,24 +62,52 @@ class Main:
         y = row * WINDOW_HEIGHT
         self.driver.set_window_position(x, y)
 
-    def wait_and_click(self, xpath, timeout=60):
+    def wait_and_click(self, locator, locator_type="xpath", timeout=60):
+        # Convert locator type to By class attribute
+        if locator_type.lower() == "xpath":
+            by = By.XPATH
+        elif locator_type.lower() == "id":
+            by = By.ID 
+        elif locator_type.lower() == "name":
+            by = By.NAME
+        else:
+            raise ValueError("Unsupported locator type. Use 'xpath', 'id', or 'name'")
+
+        # Chờ đến khi element có thể click được
         element = WebDriverWait(self.driver, timeout).until(
-            EC.element_to_be_clickable((By.XPATH, xpath))
+            EC.element_to_be_clickable((by, locator))
         )
+
         element.click()
         sleep(1.5)
 
-    def wait_and_send_keys(self, xpath, keys, timeout=60):
+
+    def wait_and_send_keys(self, locator, keys, locator_type="xpath", timeout=60):
         def human_typing(element, text, delay_range=(0.1, 0.3)):
             for char in text:
                 element.send_keys(char)
                 sleep(random.uniform(*delay_range))
 
+        # Convert locator type to By class attribute
+        if locator_type.lower() == "xpath":
+            by = By.XPATH
+        elif locator_type.lower() == "id":
+            by = By.ID 
+        elif locator_type.lower() == "name":
+            by = By.NAME
+        else:
+            raise ValueError("Unsupported locator type")
+
+        # ✅ ĐỔI THÀNH element_to_be_clickable thay vì presence_of_element_located
         element = WebDriverWait(self.driver, timeout).until(
-            EC.presence_of_element_located((By.XPATH, xpath))
+            EC.element_to_be_clickable((by, locator))
         )
+        # Clear field trước khi type
+        element.clear()
         human_typing(element, keys)
-    
+        sleep(1.5)
+            
+
     def wait_and_get_text(self, xpath, timeout=60):
         element = WebDriverWait(self.driver, timeout).until(
             EC.presence_of_element_located((By.XPATH, xpath))
@@ -173,20 +201,29 @@ class Main:
         self.driver.get("https://m.facebook.com/login/identify/")
         try:
             # self.driver.get("https://m.facebook.com/login/identify/")
-            self.driver.get(f"https://www.facebook.com/recover/password/?u={self.account['uid']}&n={self.account['code']}&fl=default_recover&sih=0&msgr=0")
+            # self.driver.get(f"https://www.facebook.com/recover/password/?u={self.account['uid']}&n={self.account['code']}&fl=default_recover&sih=0&msgr=0")
             try:
                 self.wait_and_click("/html/body/div[3]/div/div/div/div/div/div[3]/div[2]/div/div[2]/div[1]/div")
             except:
                 pass
+            # self.wait_and_send_keys("email", self.account['email'], locator_type="name")
+            self.wait_and_send_keys(" /html/body/div[1]/div[1]/div[1]/div/div[2]/div/div/form/div/div[2]/div/table/tbody/tr[2]/td[2]/input", self.account['email'])
+            self.wait_and_click("did_submit", locator_type="name")
+            self.wait_and_click("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[3]/div/div[1]/button")
+            code = ''.join(filter(str.isdigit, self.account['code'])).zfill(6)
+            self.wait_and_send_keys("recovery_code_entry", code, locator_type="id")
+            self.wait_and_click(" /html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[3]/div/div[1]/button")
+            self.wait_and_send_keys("password_new", self.generated_pass, locator_type="name")
+            self.wait_and_click("btn_continue", locator_type="name")
             # self.wait_and_send_keys("/html/body/div[1]/div[1]/div[1]/div/div[2]/div/div/form/div/div[2]/div/table/tbody/tr[2]/td[2]/input", self.account['email'])
             # self.wait_and_click("/html/body/div[1]/div[1]/div[1]/div/div[2]/div/div/form/div/div[3]/div/div[1]/button")
             # self.driver.get("https://www.facebook.com/recover/initiate/?is_from_lara_screen=1")
             # self.wait_and_click("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[3]/div/div[1]/button")
             # self.wait_and_send_keys("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[2]/div[3]/div[1]/input", self.account['code'])
             # self.wait_and_click("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[3]/div/div[1]/button")
-            self.wait_and_send_keys("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[2]/div[2]/div[1]/div/input", self.generated_pass)
-            self.wait_and_click("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[3]/div/div[1]/button")
-            sleep(20)
+            # self.wait_and_send_keys("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[2]/div[2]/div[1]/div/input", self.generated_pass)
+            # self.wait_and_click("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[3]/div/div[1]/button")
+            # sleep(20)
             cookies = self.get_cookies()
             sleep(data['sleep'])
             self.driver.quit()
