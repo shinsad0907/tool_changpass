@@ -317,11 +317,15 @@ class Main:
             except:
                 # Nếu không có lỗi -> click nút Tiếp tục
                 self.wait_and_click("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[3]/div/div[1]/button")
-                check_text = self.wait_and_get_text('/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[2]/div[2]')
+                check_text = self.wait_and_get_text('/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[1]/div/div[2]/h2')
                 print("Kiểm tra văn bản:", check_text)
-                if "code" in check_text.split():
+                if "Wprowadź kod zabezpieczający" in check_text.split():
                     self.driver.quit()
                     return True, '', ''  # Trả về thành công
+                else:
+                    self.driver.quit()
+                    return True, '', ''  # Trả về thành công
+
         except Exception as e:
             # Xử lý lỗi nếu có
             print("Lỗi đổi mật khẩu:", e)
