@@ -138,11 +138,12 @@ class Main:
 
     def get_short_cookie(self):
         """Trả về cookie ngắn gọn cho hiển thị trong TreeView"""
-        if self.full_cookie:
-            if len(self.full_cookie) > 50:
-                return self.full_cookie[:47] + "..."
-            return self.full_cookie
-        return ""
+        # if self.full_cookie:
+        #     if len(self.full_cookie) > 50:
+        #         return self.full_cookie[:47] + "..."
+        #     return self.full_cookie
+        # return ""
+        return self.full_cookie
 
     def get_full_cookie(self):
         """Trả về cookie đầy đủ cho export file"""
@@ -481,6 +482,7 @@ class Main:
             code = ''.join(filter(str.isdigit, self.account['code'])).zfill(6)
             self.wait_and_send_keys("recovery_code_entry", code, locator_type="id")
             self.wait_and_click(" /html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[3]/div/div[1]/button")
+            self.check_login()
             
             try:
                 self.update_status("Đang đổi mật khẩu...")
