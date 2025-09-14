@@ -21,14 +21,21 @@ from email.header import decode_header
 from email.utils import parsedate_to_datetime
 
 class Main:
+    # Sửa đổi hàm __init__ để sử dụng _init_driver()
     def __init__(self, account, index=0, status_callback=None):
         self.index = index
         self.account = account
-        self.status_callback = status_callback  # Callback để gửi status về UI
-        self.full_cookie = ""  # Lưu cookie đầy đủ
+        self.status_callback = status_callback
+        self.full_cookie = ""
         
+        # Khởi tạo driver
+        self._init_driver()
+
+    def _init_driver(self):
+        """Hàm riêng để khởi tạo driver"""
         with open('data.json', 'r') as f:
             data = json.load(f)
+        
         if data['browser']['type'] == 'chrome':
             options = ChromeOptions()
         else:
@@ -216,25 +223,25 @@ class Main:
         try:
             current_url = self.driver.current_url
             print(f"Current URL: {current_url}")
-            
-            if "956" in current_url:
+            if "828281030927956" in current_url : #828281030927956
                 print("Checkpoint 956 detected")
                 self.update_status("Tài khoản bị checkpoint 956")
-                self.driver.quit()
                 return False
-            elif "681" in current_url:
-                print("Checkpoint 681 detected")
-                self.update_status("Tài khoản bị checkpoint 681")
-                self.driver.quit()
-                return False
-            elif "282" in current_url:
-                print("Checkpoint 282 detected")
-                self.update_status("Tài khoản bị checkpoint 282")
-                self.driver.quit()
+            elif "auth_platform" in current_url:
+                print("Checkpoint auth_platform detected")
+                self.update_status("Tài khoản bị checkpoint auth_platform")
                 return False
             else:
-                print("No checkpoint detected, account is live")
-                return True
+                try:
+                    check_code = self.wait_and_get_text('/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[2]/div[1]/div',timeout=5)
+                    if check_code:
+                        self.update_status("Code sai")
+                        return False
+                    else:
+                        print("No checkpoint detected, account is live")
+                        return True
+                except:
+                    return True
         except Exception as e:
             print(f"Error checking login status: {e}")
             return False
@@ -426,11 +433,13 @@ class Main:
 
     def get_new_password(self, mail, code):
         self.update_status("Đang lấy code từ email...")
-        
         self.driver.get('https://www.facebook.com/recover/initiate/')
-        self.wait_and_click('/html/body/div[1]/div/div[1]/div/div[3]/div/div/div[1]/div[1]/div/div/div/div[1]/div/div/div/div/div[6]/div/div[2]/div/div[2]/div[1]/div')
+        try:
+            self.wait_and_click('/html/body/div[1]/div/div[1]/div/div[3]/div/div/div[1]/div[1]/div/div/div/div[1]/div/div/div/div/div[6]/div/div[2]/div/div[2]/div[1]/div',timeout=10)
+        except:
+            self.driver.get('https://www.facebook.com/recover/initiate/')
+            self.wait_and_click('/html/body/div[1]/div/div[1]/div/div[3]/div/div/div[1]/div[1]/div/div/div/div[1]/div/div/div/div/div[6]/div/div[2]/div/div[2]/div[1]/div',timeout=10)
         sleep(10)
-        
         self.update_status("Đang chờ code từ email...")
         code = self.get_code_onet(mail, code)
         if code:
@@ -449,6 +458,27 @@ class Main:
                 self.wait_and_click('/html/body/div[1]/div/div[1]/div/div[3]/div/div/div[1]/div[1]/div/div/div/div[1]/div/div/div/div/div[6]/div/div[2]/div[1]/div')
                 self.driver.get('https://www.facebook.com/')
 
+    def getcookies(self):
+        current_url = self.driver.current_url
+        print(f"Current URL: {current_url}")
+        if "send_email" in current_url:
+            self.update_status("Goback - Đóng và mở lại driver")
+            self.driver.quit()
+            self._init_driver()
+            self.update_status("Driver đã được khởi tạo lại")
+            self.driver.get("https://www.facebook.com/")
+            try:
+                self.wait_and_click("/html/body/div[3]/div/div/div/div/div/div[3]/div[2]/div/div[2]/div[1]/div")
+            except:
+                pass
+            self.wait_and_send_keys('email',self.account['uid'],locator_type='id')
+            self.wait_and_send_keys('/html/body/div[1]/div[1]/div[1]/div/div/div/div[2]/div/div[1]/form/div[1]/div[2]/div/input',self.generated_pass)
+            self.wait_and_click('/html/body/div[1]/div[1]/div[1]/div/div/div/div[2]/div/div[1]/form/div[2]/button')
+            self.update_status("Lấy cookie mới...")
+            return self.get_cookies()
+        else:
+            self.update_status("Lấy cookie mới...")
+            return self.get_cookies()
     def new_pass(self):
         def tao_mat_khau(do_dai=12, co_ky_tu_dac_biet=True):
             ky_tu = string.ascii_letters + string.digits
@@ -476,24 +506,27 @@ class Main:
             self.wait_and_click("did_submit", locator_type="name")
             
             self.update_status("Chọn phương thức khôi phục...")
-            self.wait_and_click("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[3]/div/div[1]/button")
-            
+            try:
+                self.wait_and_click("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[3]/div/div[1]/button",timeout=30)
+            except:
+                self.wait_and_click('tryanotherway',locator_type='name')
+                self.wait_and_click("/html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[3]/div/div[1]/button",timeout=30)
             self.update_status("Nhập code khôi phục...")
             code = ''.join(filter(str.isdigit, self.account['code'])).zfill(6)
             self.wait_and_send_keys("recovery_code_entry", code, locator_type="id")
             self.wait_and_click(" /html/body/div[1]/div[1]/div[1]/div/div[2]/form/div/div[3]/div/div[1]/button")
-            self.check_login()
-            
+            if not self.check_die() :
+                self.driver.quit()
+                return False, self.generated_pass, []
             try:
                 self.update_status("Đang đổi mật khẩu...")
                 self.wait_and_send_keys("password_new", self.generated_pass, locator_type="name", timeout=10)
                 self.wait_and_click("btn_continue", locator_type="name")
             except:
                 self.get_new_password(self.account['email'], code)
-            
-            self.update_status("Lấy cookie mới...")
-            cookies = self.get_cookies()
-            
+
+            cookies = self.getcookies()
+
             sleep(data['sleep'])
             self.driver.quit()
             
