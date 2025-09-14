@@ -1930,14 +1930,10 @@ class MailToolApp(QMainWindow):
                 for i in range(self.tree_widget.topLevelItemCount()):
                     item = self.tree_widget.topLevelItem(i)
                     
-                    stt = item.text(1)
                     uid = item.text(2)
                     cookie = item.text(3)  # Cookie hiển thị ngắn
                     email = item.text(4)
                     password = item.text(5)
-                    proxy = item.text(6)
-                    code = item.text(7)
-                    status = item.text(8)
                     
                     # Lấy cookie đầy đủ nếu có worker_thread và đã chạy xong
                     full_cookie = cookie
@@ -1947,7 +1943,7 @@ class MailToolApp(QMainWindow):
                             full_cookie = full_cookie_from_worker
                     
                     # Format: STT|UID|COOKIE|EMAIL|PASSWORD|PROXY|CODE|STATUS
-                    line = f"{stt}|{uid}|{full_cookie}|{email}|{password}|{proxy}|{code}|{status}\n"
+                    line = f"{uid}|{full_cookie}|{email}|{password}\n"
                     f.write(line)
             
             QMessageBox.information(self, "Thành công", f"Đã xuất dữ liệu ra file: {file_path}")
